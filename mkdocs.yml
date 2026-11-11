@@ -71,15 +71,87 @@ nav:
           - Exception Handling: topics/core-java/exception-handling.md
           - Generics: topics/core-java/generics.md
           - Records, Enums & Nested Classes: topics/core-java/records-enums-nested-classes.md
+          - Pass-by-Value, final & static: topics/core-java/pass-by-value-final-static.md
+          - Initialization Order: topics/core-java/initialization-order.md
+          - Cloning & Copying: topics/core-java/cloning-copying.md
+          - Annotations & Reflection: topics/core-java/annotations-reflection.md
+          - Functional Interfaces & Lambdas: topics/core-java/functional-interfaces-lambdas.md
           - OOP Deep Dive: topics/core-java/oop.md
-      - Collections: topics/collections.md
-      - Streams & Functional Programming: topics/streams-functional.md
-      - Concurrency & JVM: topics/concurrency-jvm.md
-      - Spring & Spring Boot: topics/spring-boot.md
-      - JPA & Hibernate: topics/jpa-hibernate.md
-      - SQL & Databases: topics/sql-databases.md
-      - REST APIs & Security: topics/rest-security.md
-      - Microservices: topics/microservices.md
-      - Angular: topics/angular.md
-      - JavaScript, TypeScript & RxJS: topics/javascript-typescript-rxjs.md
-      - System Design, Cloud & DevOps: topics/system-design-devops.md
+      - Collections:
+          - Overview: topics/collections.md
+          - List, ArrayList & LinkedList: topics/collections/list-arraylist-linkedlist.md
+          - HashMap Internals: topics/collections/hashmap-internals.md
+          - HashSet, TreeSet, Queue & Deque: topics/collections/hashset-treemap-queue.md
+          - Iterators, Comparable & Comparator: topics/collections/iterators-comparable-comparator.md
+          - Concurrent Collections: topics/collections/concurrent-collections.md
+      - Streams & Functional Programming:
+          - Overview: topics/streams-functional.md
+          - Stream Lifecycle: topics/streams-functional/stream-lifecycle.md
+          - Collectors & Reductions: topics/streams-functional/collectors-grouping-reducing.md
+          - Optional: topics/streams-functional/optional.md
+          - Parallel Streams: topics/streams-functional/parallel-streams.md
+      - Concurrency & JVM:
+          - Overview: topics/concurrency-jvm.md
+          - Executors & Futures: topics/concurrency-jvm/executors-futures.md
+          - synchronized, volatile & Locks: topics/concurrency-jvm/synchronization-locks.md
+          - Atomics, Deadlocks & Thread Safety: topics/concurrency-jvm/atomic-deadlocks-thread-safety.md
+          - Virtual Threads: topics/concurrency-jvm/virtual-threads.md
+          - JVM Memory & GC: topics/concurrency-jvm/jvm-memory-gc.md
+      - Spring & Spring Boot:
+          - Overview: topics/spring-boot.md
+          - IoC, DI & Beans: topics/spring/spring-ioc-di-beans.md
+          - Bean Lifecycle & AOP: topics/spring/spring-bean-lifecycle-aop.md
+          - Configuration & Profiles: topics/spring/spring-configuration-profiles.md
+          - REST, Validation & Exceptions: topics/spring/spring-rest-validation-exception.md
+          - Transactions: topics/spring/spring-transactions.md
+      - JPA & Hibernate:
+          - Overview: topics/jpa-hibernate.md
+          - Entity States & Mapping: topics/jpa/hibernate-entity-state-mapping.md
+          - Fetching & N+1: topics/jpa/fetching-n-plus-one.md
+          - Cascades & orphanRemoval: topics/jpa/cascades-orphan-removal.md
+          - Transactions & Locking: topics/jpa/transactions-locking.md
+      - SQL & Databases:
+          - Overview: topics/sql-databases.md
+          - Joins & Subqueries: topics/sql/joins-subqueries.md
+          - CTEs & Window Functions: topics/sql/window-functions-ctes.md
+          - Indexes & Execution Plans: topics/sql/indexes-execution-plans.md
+          - Transactions & Normalization: topics/sql/transactions-normalization.md
+      - REST APIs & Security:
+          - Overview: topics/rest-security.md
+          - HTTP Methods & Status Codes: topics/rest/http-methods-status.md
+          - Spring Security & JWT: topics/rest/spring-security-jwt.md
+          - CORS, CSRF & Cookies: topics/rest/cors-csrf-cookies.md
+      - Microservices:
+          - Overview: topics/microservices.md
+          - Service Communication: topics/microservices/service-communication.md
+          - Saga, Outbox & Idempotency: topics/microservices/saga-outbox-idempotency.md
+          - Discovery, Gateway & Resilience: topics/microservices/discovery-gateway-resilience.md
+          - Data Consistency & Observability: topics/microservices/data-consistency-observability.md
+      - Angular:
+          - Overview: topics/angular.md
+          - Components, Templates & Lifecycle: topics/angular/components-templates.md
+          - Change Detection & Signals: topics/angular/change-detection-signals.md
+          - Reactive Forms: topics/angular/reactive-forms.md
+          - Routing, HTTP & Interceptors: topics/angular/routing-http-interceptors.md
+          - RxJS in Angular: topics/angular/rxjs-angular.md
+          - Performance & Testing: topics/angular/performance-testing.md
+      - JavaScript, TypeScript & RxJS:
+          - Overview: topics/javascript-typescript-rxjs.md
+          - JS Variables, Scope & Hoisting: topics/javascript/variables-scope-hoisting.md
+          - Closures, this & Prototypes: topics/javascript/closures-this-prototypes.md
+          - Event Loop, Promises & async/await: topics/javascript/event-loop-promises-async.md
+          - Arrays, Objects & Copying: topics/javascript/arrays-objects-copy.md
+          - Debounce & Throttle: topics/javascript/debounce-throttle.md
+          - TS Types, Interfaces & Generics: topics/typescript/types-interfaces-generics.md
+          - TS Narrowing & Utility Types: topics/typescript/narrowing-utility-types.md
+          - TS Advanced Types & Decorators: topics/typescript/advanced-types-decorators.md
+          - Observable, Promise & Subscription: topics/rxjs/observable-promise-subscription.md
+          - Subjects, Cold & Hot: topics/rxjs/subjects-cold-hot.md
+          - Higher-Order Mapping: topics/rxjs/higher-order-mapping.md
+          - RxJS Combination & Errors: topics/rxjs/combination-error-handling.md
+      - System Design, Cloud & DevOps:
+          - Overview: topics/system-design-devops.md
+          - Scalability, Caching & Load Balancing: topics/system-design/scalability-caching.md
+          - Queues, Rate Limits & Backpressure: topics/system-design/messaging-rate-limits.md
+          - Database Scaling: topics/system-design/database-scaling.md
+          - Cloud Deployment & Observability: topics/system-design/aws-deployment-observability.md
