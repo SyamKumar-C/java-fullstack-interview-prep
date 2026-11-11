@@ -54,4 +54,8 @@ nav:
   - Roadmap: roadmap.md
   - Study Roadmap: study-roadmap.md
   - Interview Answer Format: interview-answer-format.md
-  - Topics: topics/index.md
+  - Topic Template: topic-template.md
+  - Topics:
+      - Topic Catalogue: topics/index.md
+      - Core Java: topics/core-java.md
+      - Object-Oriented Programming: topics/core-java/oop.md
