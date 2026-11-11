@@ -1,6 +1,6 @@
 # Core Java
 
-Study one lesson at a time. Understand the rule, run the example, predict output and answer interview checks without looking.
+Study one lesson at a time. Understand the rule, run the example, predict output and explain it in your own words.
 
 ## Object-oriented programming
 1. [OOP principles](core-java/oop-principles.md)
@@ -24,4 +24,4 @@ Study one lesson at a time. Understand the rule, run the example, predict output
 17. [Annotations and reflection](core-java/annotations-reflection.md)
 18. [Functional interfaces and lambdas](core-java/functional-interfaces-lambdas.md)
 
-For each topic, type and run the examples, change one line to test your understanding, and practise explaining the answer in 60–90 seconds.
+Practise each topic by typing the examples, changing one line and explaining the result without looking at the notes.

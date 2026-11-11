@@ -1,31 +1,22 @@
 # Records, Enums and Nested Classes
 
-## 1. Records (Java 16+)
+## 1. Records
 
-A record is a concise way to model data-oriented classes. The compiler provides a canonical constructor, accessors, `equals()`, `hashCode()` and `toString()`.
+A record is a concise data carrier. The compiler generates a canonical constructor, accessors, equals, hashCode and toString.
 
 ```java
-public record EmployeeDto(long id, String name) { }
-
+public record EmployeeDto(long id, String name) {}
 EmployeeDto dto = new EmployeeDto(10, "Ravi");
-System.out.println(dto.name()); // Ravi
+System.out.println(dto.name());
 ```
 
-Record components are final, so a record is shallowly immutable. If a component refers to a mutable list, that list can still be changed unless you defensively copy it.
+Record components are final, so records are shallowly immutable. A mutable object referenced by a component can still be changed unless defensively copied. Records can implement interfaces but cannot extend another class.
 
-Records cannot extend another class, but they can implement interfaces. They are useful for DTOs and value-like data, not as a replacement for every entity.
+Use records for DTOs/value-like data, not automatically for every JPA entity.
 
 ## 2. Enums
 
-An enum defines a fixed set of constants.
-
-```java
-enum OrderStatus {
-    NEW, PAID, SHIPPED, CANCELLED
-}
-```
-
-Enums can have fields, constructors and methods. Their constructors are not public and enum constants are singleton instances.
+Enums define a fixed set of constants and can contain fields, constructors and methods.
 
 ```java
 enum Priority {
@@ -36,49 +27,37 @@ enum Priority {
 }
 ```
 
-Use `==` to compare enum constants. For persistence, be careful with ordinal values because reordering enum constants can change stored meanings; storing stable names or explicit codes is often safer.
+Enum constructors cannot be public or protected. Compare enum constants with ==. Avoid persisting ordinal values if enum order may change; stable names/codes are safer.
 
-## 3. Nested class types
+## 3. Nested classes
 
-| Type | Key point |
+| Type | Meaning |
 |---|---|
-| Static nested class | Does not need an enclosing object |
-| Inner member class | Each instance is associated with an enclosing object |
-| Local class | Declared inside a method/block |
-| Anonymous class | One-off class expression, often for an interface or abstract class |
+| Static nested | No enclosing object required |
+| Inner member | Associated with an enclosing instance |
+| Local | Declared inside a method/block |
+| Anonymous | One-off class expression |
 
 ```java
 class Outer {
     private int value = 10;
-
-    static class Nested {
-        void show() { System.out.println("No Outer instance required"); }
-    }
-
-    class Inner {
-        void show() { System.out.println(value); }
-    }
+    static class Nested { }
+    class Inner { void show() { System.out.println(value); } }
 }
 ```
 
-Create an inner class using an outer instance: `Outer.Inner inner = outer.new Inner();`.
+Create an inner class using `outer.new Inner()`. A static nested class has no implicit outer instance.
 
-## 4. Static nested vs inner class
+## 4. Interview questions
 
-A static nested class cannot directly access instance members of the outer class because it has no enclosing instance. An inner class can access them through its enclosing object.
+**Are records fully immutable?** No, only component references are final; referenced mutable values may change.
 
-Use a static nested class when the helper is closely related to the outer type but does not need an outer object.
+**Can enum have a constructor?** Yes, private/package-private only.
 
-## 5. Interview questions
+**Can enum extend another class?** No, it already extends java.lang.Enum, but it can implement interfaces.
 
-**Are records fully immutable?** Their component references are final, but referenced mutable objects are not automatically made immutable.
+**Static nested vs inner?** Inner is tied to an outer object; static nested is not.
 
-**Can an enum have a constructor?** Yes, but it cannot be public or protected; constants invoke it.
+## 5. Practice
 
-**Can an enum extend a class?** No, enums already extend java.lang.Enum, but can implement interfaces.
-
-**What is the difference between static nested and inner class?** The inner class is tied to an enclosing instance; the static nested class is not.
-
-## 6. Practice
-
-Create an OrderStatus enum with a display label, an OrderResponse record, and a static nested builder/helper class. Explain why a record is or is not suitable for a JPA entity.
+Create an OrderStatus enum with a display label, an OrderResponse record and a static nested helper. Explain why the record is suitable for a response DTO.

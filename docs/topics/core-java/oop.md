@@ -1,198 +1,111 @@
 # Object-Oriented Programming (OOP)
 
-> **Priority:** P1  
-> **Level:** Beginner to intermediate  
-> **Estimated study time:** 35–45 minutes
+## 1. Interview answer
 
-## 1. Short interview answer
+Object-oriented programming organizes software around objects that combine state (data) and behavior (methods). Java uses classes to define objects and commonly teaches four principles: encapsulation, abstraction, inheritance and polymorphism.
 
-Object-oriented programming is a way of designing software around objects. An object combines **state** (data) and **behavior** (methods). Java uses classes to define objects and supports four commonly discussed OOP principles: encapsulation, abstraction, inheritance, and polymorphism.
+## 2. Encapsulation
 
-## 2. Concept and purpose
-
-OOP helps organize code around the things and responsibilities in a business domain.
-
-For example, an order application may have **Customer**, **Order**, and **Payment** classes. Each class owns related data and behavior.
-
-- **Encapsulation:** Keep data and the methods that operate on it together, and control access to the internal state.
-- **Abstraction:** Expose what a caller needs while hiding implementation details.
-- **Inheritance:** Create a new class based on an existing class to reuse or specialize behavior.
-- **Polymorphism:** Use a common parent type or interface while allowing different implementations to behave differently.
-
-## 3. How it works
-
-### Encapsulation
-
-A class protects its state by restricting direct access and exposing controlled methods.
+Encapsulation controls access to internal state and protects object invariants. It is more than generating getters and setters.
 
 ```java
-public class BankAccount {
-    private double balance;
+class BankAccount {
+    private BigDecimal balance = BigDecimal.ZERO;
 
-    public void deposit(double amount) {
-        if (amount <= 0) {
-            throw new IllegalArgumentException("Amount must be positive");
-        }
-        balance += amount;
+    public void deposit(BigDecimal amount) {
+        if (amount.signum() <= 0) throw new IllegalArgumentException();
+        balance = balance.add(amount);
     }
-
-    public double getBalance() {
-        return balance;
-    }
+    public BigDecimal balance() { return balance; }
 }
 ```
 
-The caller cannot directly assign to **balance**. It must use **deposit()**, where validation is applied.
+The class ensures that callers cannot set an invalid balance directly.
 
-### Abstraction
+## 3. Abstraction
 
-An interface describes a capability without exposing the implementation.
+Abstraction exposes what a caller needs and hides implementation details.
 
 ```java
-interface PaymentService {
-    void pay(double amount);
-}
-
-class CardPaymentService implements PaymentService {
-    @Override
-    public void pay(double amount) {
-        System.out.println("Paid by card: " + amount);
-    }
+interface PaymentGateway {
+    void charge(BigDecimal amount);
 }
 ```
 
-The calling code can depend on **PaymentService**, rather than knowing the card-payment details.
+Checkout code can use the contract without knowing how UPI, card or another provider works.
 
-### Inheritance
+## 4. Inheritance
 
-A child class inherits accessible members from a parent class.
+Inheritance creates a subtype from an existing class using `extends`. The child inherits accessible members and can specialize behavior. Java classes have single inheritance.
 
 ```java
-class Employee {
-    void work() {
-        System.out.println("Employee is working");
-    }
-}
-
+class Employee { void work() {} }
 class Developer extends Employee {
-    void writeCode() {
-        System.out.println("Writing code");
-    }
+    void writeCode() {}
 }
 ```
 
-**Developer** can use **work()** and add its own **writeCode()** behavior.
+Use inheritance for a genuine “is-a” relationship, not merely to reuse a few lines.
 
-### Polymorphism
+## 5. Polymorphism
 
-A parent reference can point to an object of a child implementation. The overridden method is selected at runtime.
+A parent/interface reference can refer to different implementation objects. Overridden instance methods are selected at runtime.
 
 ```java
-interface Notification {
-    void send(String message);
-}
-
+interface Notification { void send(String message); }
 class EmailNotification implements Notification {
-    public void send(String message) {
-        System.out.println("Email: " + message);
-    }
+    public void send(String m) { System.out.println("Email " + m); }
 }
-
 class SmsNotification implements Notification {
-    public void send(String message) {
-        System.out.println("SMS: " + message);
-    }
+    public void send(String m) { System.out.println("SMS " + m); }
 }
-
-public class Demo {
-    public static void main(String[] args) {
-        Notification notification = new EmailNotification();
-        notification.send("Interview reminder");
-
-        notification = new SmsNotification();
-        notification.send("Interview reminder");
-    }
-}
+Notification notification = new EmailNotification();
+notification.send("Hello");
+notification = new SmsNotification();
+notification.send("Hello");
 ```
 
-The same method call, **send()**, produces different behavior depending on the actual object.
+Overloading is compile-time resolution; overriding is runtime dispatch.
 
-## 4. Practical use in a Spring Boot application
+## 6. Composition vs inheritance
 
-A service can depend on an interface:
+Composition means one object contains or uses another object. It often gives more flexible designs because behavior can be replaced through a collaborator.
 
-```java
-public interface PaymentGateway {
-    void charge(long amountInPaise);
-}
+Example: CheckoutService has a PaymentGateway. CheckoutService is not a PaymentGateway; it uses one.
 
-@Service
-class UpiPaymentGateway implements PaymentGateway {
-    @Override
-    public void charge(long amountInPaise) {
-        // Call the UPI provider
-    }
-}
+## 7. Practical Spring Boot example
 
-@Service
-class CheckoutService {
-    private final PaymentGateway paymentGateway;
+A service depends on a PaymentGateway interface and Spring injects a concrete implementation. This uses abstraction, polymorphism and dependency injection. If multiple implementations exist, choose one with @Qualifier or @Primary.
 
-    CheckoutService(PaymentGateway paymentGateway) {
-        this.paymentGateway = paymentGateway;
-    }
+## 8. Comparison
 
-    void checkout() {
-        paymentGateway.charge(15000);
-    }
-}
-```
-
-This uses abstraction and polymorphism. Spring injects an implementation of the interface. If multiple implementations exist, use a clear choice such as **@Qualifier** or **@Primary**.
-
-## 5. Comparison and trade-offs
-
-| Principle | Main purpose | Example |
+| Principle | Purpose | Example |
 |---|---|---|
-| Encapsulation | Protect and control state | Private balance with deposit method |
-| Abstraction | Hide implementation details | PaymentGateway interface |
-| Inheritance | Reuse or specialize a type | Developer extends Employee |
-| Polymorphism | Vary behavior behind a common type | Different payment implementations |
+| Encapsulation | Protect state | Validated deposit method |
+| Abstraction | Hide implementation | PaymentGateway |
+| Inheritance | Specialize a type | Developer extends Employee |
+| Polymorphism | Vary behavior | Email/SMS implementation |
 
-Prefer composition over inheritance when a class only needs to use another object's behavior and is not truly a specialized form of that type. Deep inheritance chains can make code harder to change.
+## 9. Common mistakes
 
-## 6. Common mistakes
+- Confusing abstraction with encapsulation.
+- Thinking getters/setters alone guarantee encapsulation.
+- Using inheritance only for code reuse.
+- Calling overloading runtime polymorphism.
+- Exposing mutable internal collections directly.
 
-- **Calling getters and setters encapsulation by itself:** Encapsulation is about controlling access and protecting valid state, not simply generating getters and setters.
-- **Confusing abstraction with encapsulation:** Abstraction hides implementation complexity; encapsulation protects and controls internal state.
-- **Using inheritance only for code reuse:** Inheritance should represent a genuine “is-a” relationship.
-- **Assuming overloading is runtime polymorphism:** Method overloading is resolved at compile time; overridden instance methods use runtime dispatch.
+## 10. Interview questions
 
-## 7. Interview questions
+**What are the four pillars?** Encapsulation, abstraction, inheritance and polymorphism.
 
-??? question "Q1. What are the four pillars of OOP?"
-    **Answer:** Encapsulation, abstraction, inheritance, and polymorphism. Encapsulation controls access to state, abstraction hides implementation details, inheritance specializes an existing type, and polymorphism allows different implementations to be used through a common type.
+**Abstraction vs encapsulation?** Abstraction hides implementation details; encapsulation controls access to internal state.
 
-??? question "Q2. What is the difference between abstraction and encapsulation?"
-    **Answer:** Abstraction focuses on what an object exposes and hides unnecessary implementation details. Encapsulation groups state and behavior and controls access to the object's internal state.
+**What is runtime polymorphism?** An overridden method call resolved using the actual object at runtime.
 
-??? question "Q3. What is runtime polymorphism in Java?"
-    **Answer:** Runtime polymorphism happens when an overridden instance method is called through a parent-class or interface reference. The JVM selects the implementation based on the actual object.
+**Does Java support multiple inheritance?** Not for classes; a class can implement multiple interfaces.
 
-??? question "Q4. Why should we prefer composition over inheritance in some cases?"
-    **Answer:** Composition keeps components loosely coupled and lets behavior be changed by replacing a collaborator. Inheritance creates a tighter relationship and can become difficult to maintain in deep class hierarchies.
+**Why composition over inheritance?** It reduces tight coupling and allows collaborators to be replaced more easily.
 
-??? question "Q5. Does Java support multiple inheritance?"
-    **Answer:** Java does not allow a class to extend multiple classes. A class can implement multiple interfaces, which allows it to inherit multiple type contracts. Interfaces can also provide default methods, with conflict rules when defaults clash.
+## 11. Practice
 
-## 8. Quick revision
-
-- **Remember:** Encapsulation protects state; abstraction hides details; inheritance specializes; polymorphism varies behavior.
-- **Common follow-up:** Compile-time vs runtime polymorphism.
-- **One-line takeaway:** Program to a useful abstraction, keep state valid, and use inheritance only for a real type relationship.
-
-## 9. Practice
-
-1. Create a **BankAccount** class that prevents negative deposits and withdrawals.
-2. Create a **ReportExporter** interface with PDF and CSV implementations.
-3. Explain why **CheckoutService** should depend on **PaymentGateway** instead of directly creating a concrete payment class.
+Design a checkout flow with PaymentGateway implementations for card and UPI. Explain which OOP principles are used and why CheckoutService should depend on the interface.
