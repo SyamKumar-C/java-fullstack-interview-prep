@@ -57,8 +57,21 @@ nav:
   - Topic Template: topic-template.md
   - Topics:
       - Topic Catalogue: topics/index.md
-      - Core Java: topics/core-java.md
-      - OOP: topics/core-java/oop.md
+      - Core Java:
+          - Overview: topics/core-java.md
+          - OOP Principles: topics/core-java/oop-principles.md
+          - Classes, Objects & Constructors: topics/core-java/classes-objects-constructors.md
+          - Overloading vs Overriding: topics/core-java/overloading-vs-overriding.md
+          - Abstract Classes vs Interfaces: topics/core-java/abstract-classes-vs-interfaces.md
+          - Interface Default & Static Methods: topics/core-java/interface-default-static-methods.md
+          - Access Modifiers & Packages: topics/core-java/access-modifiers-packages.md
+          - String Immutability & Pool: topics/core-java/string-immutability-pool.md
+          - equals() & hashCode(): topics/core-java/equals-hashcode.md
+          - Wrapper Classes & Autoboxing: topics/core-java/wrappers-autoboxing.md
+          - Exception Handling: topics/core-java/exception-handling.md
+          - Generics: topics/core-java/generics.md
+          - Records, Enums & Nested Classes: topics/core-java/records-enums-nested-classes.md
+          - OOP Deep Dive: topics/core-java/oop.md
       - Collections: topics/collections.md
       - Streams & Functional Programming: topics/streams-functional.md
       - Concurrency & JVM: topics/concurrency-jvm.md
