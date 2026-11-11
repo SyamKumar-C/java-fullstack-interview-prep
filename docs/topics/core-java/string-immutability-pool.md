@@ -1,77 +1,103 @@
-# String Immutability and String Pool
+# String Immutability and String Pool in Java
 
-## 1. Why is String immutable?
+## 1. String immutability
 
-A `String` object cannot be changed after it is created. Operations such as `concat()` return a new String rather than modifying the original.
-
-```java
-String name = "Java";
-name.concat(" 21");
-System.out.println(name); // Java
-name = name.concat(" 21");
-System.out.println(name); // Java 21
-```
-
-Immutability makes strings safe to share, supports string pooling, and makes their hash codes stable. It is useful for values such as configuration keys and map keys.
-
-## 2. String pool
-
-Java maintains a pool of canonical strings. String literals with the same contents can refer to the same pooled object.
+A String is immutable: once created, its character sequence cannot be changed. Operations such as concat, replace, and toUpperCase return a new String when the result differs.
 
 ```java
-String a = "spring";
-String b = "spring";
-String c = new String("spring");
+String value = "java";
+value.concat(" spring");
+System.out.println(value); // java
 
-System.out.println(a == b);      // true
-System.out.println(a == c);      // false
-System.out.println(a.equals(c)); // true
+value = value.concat(" spring");
+System.out.println(value); // java spring
 ```
+
+The first concat does not modify the original object. The second assigns the returned String to the variable.
+
+## 2. Why String is immutable
+
+Immutability provides:
+- Safe sharing across code and threads.
+- Stable hash codes, useful for map keys.
+- Security benefits when strings represent paths, class names, or configuration values.
+- String pool reuse without one caller changing a shared value.
+
+## 3. String pool
+
+The JVM maintains a pool of interned strings. String literals with the same content can refer to the same pooled object.
+
+```java
+String a = "hello";
+String b = "hello";
+System.out.println(a == b); // true in this literal example
+```
+
+The pool is an optimization and canonicalization mechanism. Do not use `==` for general content comparison.
+
+## 4. new String and intern()
+
+```java
+String a = "java";
+String b = new String("java");
+System.out.println(a == b);      // false
+System.out.println(a.equals(b)); // true
+
+String c = b.intern();
+System.out.println(a == c);      // true
+```
+
+`new String` creates a distinct String object. `intern()` returns the canonical pooled representation for equal content.
+
+## 5. == versus equals
 
 - `==` compares references for objects.
-- `equals()` compares String contents.
-- `new String(...)` explicitly creates a distinct String object (unless optimized under rules that preserve observable behavior).
+- `equals()` compares content for String.
 
-## 3. intern()
+Always use equals (or Objects.equals for null-safe comparison) when comparing string values.
 
-`intern()` returns the pooled canonical representation for the same string content.
+## 6. StringBuilder and StringBuffer
 
-```java
-String x = new String("api");
-String y = x.intern();
-System.out.println(y == "api"); // true
-```
+| String | StringBuilder | StringBuffer |
+|---|---|---|
+| Immutable | Mutable | Mutable |
+| Repeated concatenation creates results | Efficient repeated changes | Synchronized methods |
+| Safe to share because immutable | Not thread-safe by default | Thread-safe at method level |
 
-Do not use `intern()` blindly for unbounded user input; pooling large numbers of unique strings can create memory pressure.
+Use StringBuilder for repeated concatenation in a single thread. StringBuffer is less commonly needed; synchronization of individual methods does not automatically make a multi-call workflow atomic.
 
-## 4. StringBuilder vs StringBuffer
+## 7. Common mistakes
 
-| Type | Mutable | Thread-safe | Typical use |
-|---|---|---|---|
-| String | No | Safe to share because immutable | Text values |
-| StringBuilder | Yes | No | Building text in one thread |
-| StringBuffer | Yes | Synchronized methods | Legacy shared mutable text |
+- Using == to compare text.
+- Expecting concat to mutate the original.
+- Using String in a large loop for repeated concatenation.
+- Assuming every string created at runtime is automatically interned.
+- Calling intern indiscriminately on high-cardinality user input.
 
-For repeated concatenation in a loop, use `StringBuilder` rather than creating many intermediate strings.
+## 8. Interview questions and answers
 
-```java
-StringBuilder result = new StringBuilder();
-for (int i = 1; i <= 3; i++) result.append(i);
-System.out.println(result); // 123
-```
+**Q1. Why is String immutable?**  
+It supports safe sharing, stable hashing, security, and string-pool reuse.
 
-The compiler can optimize simple concatenation expressions, but explicit StringBuilder is useful for loops and incremental building.
+**Q2. Difference between == and equals for String?**  
+== compares references; equals compares character content.
 
-## 5. Interview questions
+**Q3. What is the String pool?**  
+A JVM-managed pool of canonical string instances that allows equal literals/interned strings to share an object.
 
-**Why is String final/immutable?** Immutability supports safe sharing, stable hashing and security-sensitive use. The exact class design and implementation details are JVM/library concerns; the key contract is that String content cannot change.
+**Q4. What does intern() do?**  
+It returns the canonical pooled String for the same content.
 
-**Difference between == and equals()?** Reference identity vs content equality.
+**Q5. StringBuilder versus StringBuffer?**  
+Both are mutable. StringBuffer synchronizes its methods; StringBuilder is generally faster for single-threaded construction.
 
-**When would you use StringBuilder?** When repeatedly modifying or assembling text, especially in loops.
+**Q6. Why is String a good HashMap key?**  
+It is immutable, so its equality and hash code remain stable after insertion.
 
-**Does StringBuilder guarantee thread safety?** No.
+## 9. Practice
 
-## 6. Practice
+Predict the output of comparisons involving literals, new String, concatenation at compile time, and concatenation at runtime. Explain each result using reference equality versus content equality.
 
-Predict the output of expressions using literals, `new String()`, `intern()`, `==` and `equals()`. Explain each comparison in terms of references and content.
+## 10. Quick revision
+
+String is immutable. == compares references; equals compares content. Literals can share pooled instances. Use StringBuilder for repeated construction.

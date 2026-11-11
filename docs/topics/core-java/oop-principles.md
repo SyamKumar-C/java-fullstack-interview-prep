@@ -1,90 +1,116 @@
-# OOP Principles: Encapsulation, Abstraction, Inheritance and Polymorphism
+# OOP Principles in Java
 
-## 1. Encapsulation
+## 1. What is object-oriented programming?
 
-Encapsulation keeps data and the operations that protect it together. It prevents callers from putting an object into an invalid state.
+Object-oriented programming (OOP) organizes software around objects. An object combines **state** (data) and **behavior** (methods). A class is the blueprint; an object is an instance created from that blueprint.
+
+OOP helps model business concepts, protect data, reuse behavior, and change implementations without changing every caller.
 
 ```java
 class BankAccount {
-    private long balance;
+    private double balance;
 
-    public void deposit(long amount) {
+    public void deposit(double amount) {
         if (amount <= 0) throw new IllegalArgumentException("Amount must be positive");
         balance += amount;
     }
 
-    public long getBalance() { return balance; }
+    public double getBalance() { return balance; }
 }
 ```
 
-The key is not merely private fields and getters/setters. It is controlling how state changes.
+The balance is state. `deposit` is behavior. The private field prevents callers from changing the balance directly.
 
-## 2. Abstraction
+## 2. The four main principles
 
-Abstraction exposes what a caller needs and hides implementation details.
+### Encapsulation
+Keep data and the operations that protect it together. Hide internal state and expose controlled methods.
+
+- Use private fields.
+- Validate changes at the boundary.
+- Avoid public setters when they allow invalid states.
+- Example: an order should not allow its total to become negative.
+
+### Abstraction
+Expose what a caller needs and hide implementation details. Java uses interfaces and abstract classes to define contracts.
 
 ```java
 interface PaymentGateway {
-    void pay(long amount);
+    void pay(long amountInPaise);
 }
-class CheckoutService {
-    private final PaymentGateway gateway;
-    CheckoutService(PaymentGateway gateway) { this.gateway = gateway; }
-    void checkout() { gateway.pay(500); }
+class UpiGateway implements PaymentGateway {
+    public void pay(long amountInPaise) {
+        System.out.println("Paying through UPI");
+    }
 }
 ```
 
-CheckoutService depends on the contract, not a specific payment provider. A different implementation can be supplied without changing the service.
+The checkout service depends on the payment contract, not the UPI implementation.
 
-## 3. Inheritance
+### Inheritance
+A subclass reuses and specializes behavior from a superclass using `extends`. Java supports single class inheritance, but a class can implement multiple interfaces.
 
-Inheritance models an "is-a" relationship and reuses or specializes behavior.
+Use inheritance only for a genuine **is-a** relationship and when the subtype can safely replace the parent (Liskov Substitution Principle). Prefer composition when you only want code reuse.
+
+### Polymorphism
+The same contract can have different implementations.
+
+- Compile-time polymorphism: method overloading; compiler selects a signature.
+- Runtime polymorphism: overridden instance method; actual object type determines the implementation.
 
 ```java
-class Vehicle { void start() { System.out.println("Start"); } }
-class Car extends Vehicle { void openBoot() { System.out.println("Boot open"); } }
+PaymentGateway gateway = new UpiGateway();
+gateway.pay(25000); // UpiGateway implementation runs
 ```
 
-Use inheritance only when the subtype can safely stand in for the parent (Liskov substitution). Do not use it only to reuse a few lines of code; composition is often more flexible.
+## 3. Overloading versus overriding
 
-## 4. Polymorphism
+| Point | Overloading | Overriding |
+|---|---|---|
+| Meaning | Same method name, different parameter list | Subclass replaces inherited instance behavior |
+| Selection | Compile time | Runtime dispatch |
+| Parameters | Must differ | Must match (or valid covariant return) |
+| Return type alone | Cannot distinguish overloads | Must be same or covariant |
+| Static methods | Can be overloaded | Hidden, not overridden |
 
-Polymorphism lets code use a common parent type or interface while runtime objects provide different behavior.
+## 4. Real project scenario
 
-```java
-interface Payment {
-    void pay();
-}
-class CardPayment implements Payment {
-    public void pay() { System.out.println("Card"); }
-}
-class UpiPayment implements Payment {
-    public void pay() { System.out.println("UPI"); }
-}
-void process(Payment payment) {
-    payment.pay();
-}
-```
+A notification module may define `NotificationSender` with `send(message)`. Email, SMS, and push implementations satisfy the same contract. The business service accepts the interface through constructor injection. Adding WhatsApp support then does not require rewriting the business workflow.
 
-The call to an overridden instance method is dispatched using the runtime object's class.
+Do not create an interface for every class automatically. Use one when you need multiple implementations, a stable boundary, or a useful testing seam.
 
-## 5. Composition vs inheritance
+## 5. Common mistakes
 
-- Inheritance: "is-a". A Car is a Vehicle.
-- Composition: "has-a". An OrderService has a PaymentGateway.
+- Treating inheritance as the default way to share code.
+- Exposing mutable fields and calling it encapsulation.
+- Confusing abstraction (what is exposed) with encapsulation (how state is protected).
+- Assuming a parent reference changes the object's runtime type.
+- Creating deep inheritance trees that are difficult to test.
 
-Composition allows behavior to be replaced by supplying another collaborator. Spring dependency injection commonly uses composition.
+## 6. Interview questions and answers
 
-## 6. Interview questions
+**Q1. Explain the four OOP pillars with one example.**  
+Use a bank account: private balance plus validated deposit is encapsulation; callers use deposit without knowing storage details (abstraction); SavingsAccount may extend Account only if it is truly an Account (inheritance); different Account implementations can respond differently through the same method (polymorphism).
 
-**Is encapsulation the same as data hiding?** Data hiding is one part; encapsulation also groups state with behavior and enforces valid operations.
+**Q2. Is abstraction possible without an interface?**  
+Yes. Abstract classes and well-designed public APIs can also expose a simpler contract while hiding details.
 
-**Why prefer composition?** It reduces tight coupling to a class hierarchy and makes behavior easier to replace and test.
+**Q3. Why prefer composition over inheritance?**  
+Composition keeps components replaceable and avoids tight coupling to a parent implementation. A service can contain a PaymentGateway rather than inherit from a particular gateway.
 
-**What is runtime polymorphism?** An overridden instance method is selected based on the actual object at runtime.
+**Q4. Can we achieve runtime polymorphism with fields?**  
+No. Field access is resolved using the reference's declared type; overridden instance methods use runtime dispatch.
 
-**Can constructors be polymorphic?** No. Constructors are not overridden.
+**Q5. Give an example of polymorphism in Spring.**  
+A service depends on an interface such as PaymentProcessor. Spring injects one implementation based on configuration or qualifiers.
 
-## 7. Practice
+## 7. Practice exercise
 
-Model notifications using an interface and email/SMS implementations. Then explain how a service can use the interface without knowing the concrete implementation.
+Design a discount module with Regular, Premium, and Employee discount policies. Define a common contract, implement each policy, and make the checkout service depend only on that contract. Add a test for each policy.
+
+## 8. Quick revision
+
+- Encapsulation: protect state.
+- Abstraction: expose a useful contract.
+- Inheritance: specialize an is-a relationship.
+- Polymorphism: one contract, multiple behaviors.

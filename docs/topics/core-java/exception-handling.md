@@ -1,61 +1,67 @@
-# Exception Handling
+# Exception Handling in Java
 
-## 1. Exception hierarchy
+## 1. What is an exception?
 
-`Throwable` is the root. Its main branches are:
-- `Error`: serious JVM or environment problems; applications usually should not try to recover from these.
-- `Exception`: conditions an application may handle.
-  - Checked exceptions: must be caught or declared.
-  - Runtime exceptions: unchecked; often indicate programming errors or invalid input.
+An exception is an event that interrupts the normal flow of a program. Java represents exceptions as objects in the `Throwable` hierarchy.
 
-Examples: `IOException` is checked; `NullPointerException` and `IllegalArgumentException` are unchecked.
+```
+Throwable
+├── Error
+└── Exception
+    └── RuntimeException
+```
 
-## 2. try, catch and finally
+- `Error`: serious JVM or environment problems; applications generally should not try to recover from them.
+- Checked exception: an Exception subtype that is not a RuntimeException. The compiler requires handling or declaration.
+- Unchecked exception: RuntimeException and its subclasses. No compile-time handling requirement.
+
+## 2. Checked versus unchecked
+
+| Checked | Unchecked |
+|---|---|
+| Checked by compiler | Not required to be caught or declared |
+| Often represents a recoverable external condition | Often represents invalid input, state, or programming errors |
+| Example: IOException, SQLException | Example: NullPointerException, IllegalArgumentException |
+
+Choose based on the API contract, not a rule that every business error must be checked. In Spring applications, unchecked domain exceptions are common and can be mapped to HTTP responses.
+
+## 3. try, catch, finally, throw and throws
 
 ```java
-try {
-    int result = 10 / Integer.parseInt("0");
-} catch (NumberFormatException ex) {
-    System.out.println("Input is not a number");
-} catch (ArithmeticException ex) {
-    System.out.println("Cannot divide by zero");
-} finally {
-    System.out.println("Cleanup");
+static String readName(Path path) throws IOException {
+    try {
+        return Files.readString(path);
+    } catch (AccessDeniedException ex) {
+        throw new IOException("Cannot access file: " + path, ex);
+    } finally {
+        System.out.println("Read attempt finished");
+    }
 }
 ```
 
-Catch more specific exceptions before broader parent types. A `finally` block usually runs whether the try block completes normally or exits by throwing, but it is not an absolute guarantee if the JVM/process terminates.
+- `try`: code that may fail.
+- `catch`: handles a matching exception.
+- `finally`: cleanup code that normally runs whether the try succeeds or fails.
+- `throw`: actually throws an exception object.
+- `throws`: declares possible exceptions in a method signature.
 
-## 3. throw vs throws
-
-- `throw` actually throws an exception object.
-- `throws` declares exceptions a method may pass to its caller.
-
-```java
-void validate(int age) {
-    if (age < 18) throw new IllegalArgumentException("Underage");
-}
-void readFile() throws IOException {
-    // file operation
-}
-```
+A finally block may not run if the JVM exits abruptly, the process is killed, or the machine loses power. Avoid returning from finally because it can hide an earlier return or exception.
 
 ## 4. try-with-resources
 
-Use it for resources implementing `AutoCloseable`. Java closes them automatically, including when an exception occurs.
+Use it for resources implementing AutoCloseable. Java closes them automatically, including when an exception occurs.
 
 ```java
-try (var reader = java.nio.file.Files.newBufferedReader(
-        java.nio.file.Path.of("input.txt"))) {
-    System.out.println(reader.readLine());
+try (var reader = Files.newBufferedReader(path)) {
+    return reader.readLine();
 }
 ```
 
-This is preferred over manually closing resources in `finally`.
+If both the body and close operation fail, the body exception is primary and close failures are available as suppressed exceptions.
 
 ## 5. Custom exceptions
 
-Create a domain-specific exception when it makes an error clearer to callers.
+Create domain-specific exceptions when they make the failure meaningful to callers.
 
 ```java
 class InsufficientBalanceException extends RuntimeException {
@@ -65,27 +71,76 @@ class InsufficientBalanceException extends RuntimeException {
 }
 ```
 
-In Spring Boot, a service may throw a domain exception and a `@RestControllerAdvice` can translate it into a consistent HTTP response.
+Do not create a large exception class for every minor condition. Preserve the original cause when translating an exception:
 
-## 6. Best practices
+```java
+throw new PaymentFailedException("Payment provider failed", cause);
+```
 
-- Do not swallow exceptions with an empty catch block.
-- Catch exceptions you can meaningfully handle.
-- Preserve the cause when wrapping: `throw new ServiceException("Failed", ex)`.
+## 6. Exception propagation
+
+If a method does not catch an exception, it propagates up the call stack. The first compatible catch block handles it. If no handler exists, the thread's uncaught-exception handler is invoked.
+
+Do not catch an exception and silently ignore it. Either recover, add useful context and rethrow, or let it propagate.
+
+## 7. Spring Boot scenario
+
+A REST API can translate domain exceptions into consistent HTTP responses using `@RestControllerAdvice` and `@ExceptionHandler`.
+
+```java
+@RestControllerAdvice
+class ApiExceptionHandler {
+    @ExceptionHandler(InsufficientBalanceException.class)
+    ResponseEntity<ProblemDetail> handle(InsufficientBalanceException ex) {
+        ProblemDetail problem =
+            ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+    }
+}
+```
+
+Avoid returning stack traces, SQL details, tokens, or internal hostnames to clients. Log technical details safely and return a stable error response.
+
+## 8. Best practices
+
+- Catch the narrowest useful exception type.
 - Do not use exceptions for normal branching.
-- Avoid logging the same exception at every layer.
-- Do not expose stack traces or internal details in API responses.
+- Preserve causes when wrapping.
+- Include context that helps diagnose the failure.
+- Do not log and rethrow at every layer; this creates duplicate logs.
+- Close resources with try-with-resources.
+- Do not expose sensitive information in exception messages.
+- Define clear retry rules; not every exception is retryable.
 
-## 7. Interview questions
+## 9. Interview questions and answers
 
-**Checked vs unchecked?** Checked exceptions are enforced by the compiler; unchecked exceptions extend RuntimeException (or Error).
+**Q1. Difference between throw and throws?**  
+`throw` raises an exception at a particular point. `throws` declares exceptions a method may pass to its caller.
 
-**Can finally fail to execute?** Yes, for example if the process exits or the JVM halts.
+**Q2. Does finally always execute?**  
+It executes in normal control flow, including when an exception is thrown or a return is attempted. It is not guaranteed after abrupt JVM/process termination.
 
-**Can we have try without catch?** Yes, with finally or try-with-resources.
+**Q3. Can we have try without catch?**  
+Yes, if it has a finally block, or if it is a try-with-resources statement.
 
-**What is exception propagation?** An exception moves up the call stack until a matching handler catches it or the thread terminates.
+**Q4. Can a catch block catch multiple exception types?**  
+Yes, with multi-catch: `catch (IOException | SQLException ex)`. The alternatives cannot have a subclass/superclass relationship.
 
-## 8. Practice
+**Q5. What are suppressed exceptions?**  
+They are secondary exceptions, commonly thrown while closing resources, attached to the primary exception. Read them with `getSuppressed()`.
 
-Build a service method that validates an order, throws a custom exception for invalid state and maps it to HTTP 400 using Spring's exception handler.
+**Q6. Should business exceptions be checked or unchecked?**  
+Choose based on the caller contract. Unchecked exceptions are common in service layers because Spring transaction rollback defaults are aligned with them, but checked exceptions can be useful when callers are expected to recover explicitly.
+
+## 10. Coding exercises
+
+1. Read a file using try-with-resources and handle a missing file.
+2. Create a custom InvalidOrderException and map it to HTTP 400.
+3. Write a method that translates SQLException into a repository-specific exception while preserving the cause.
+
+## 11. Quick revision
+
+- Checked: compiler enforces handling/declaration.
+- Unchecked: RuntimeException family.
+- throw raises; throws declares.
+- finally is for cleanup; try-with-resources is preferred for closeable resources.

@@ -1,67 +1,73 @@
-# Access Modifiers and Packages
+# Java Access Modifiers and Packages
 
-## 1. Four access levels
+## 1. Why access control matters
 
-| Modifier | Same class | Same package | Subclass in another package | Unrelated class elsewhere |
-|---|---:|---:|---:|---:|
+Access modifiers define where a class, constructor, field, or method can be used. They protect implementation details and help define a stable public API.
+
+## 2. Four access levels
+
+| Modifier | Same class | Same package | Subclass in another package | Unrelated other package |
+|---|---|---|---|---|
 | private | Yes | No | No | No |
-| package-private (no keyword) | Yes | Yes | No, except inherited access nuances | No |
+| package-private (no modifier) | Yes | Yes | No, except inherited visibility nuances | No |
 | protected | Yes | Yes | Yes, through subclass access rules | No |
 | public | Yes | Yes | Yes | Yes |
 
-A top-level class can be `public` or package-private. It cannot be `private` or `protected`.
+A top-level class can be public or package-private; it cannot be private or protected. Nested classes can use all four access levels.
 
-## 2. Protected access detail
+## 3. protected across packages
 
-Outside the declaring package, a subclass can access a protected member through inheritance, subject to Java's qualifying-reference rule. In simple terms, code in a subclass in another package cannot use a parent protected member through an arbitrary parent-class object.
+Protected access outside the package is available to subclasses, but it is not simply public access. In a subclass in another package, access through a qualifying subclass reference is restricted; arbitrary access through a parent-typed reference is not allowed.
 
-## 3. Packages
+This rule prevents protected from becoming a general cross-package public API.
 
-Packages group related types, prevent naming collisions and help control access.
+## 4. Packages
 
-```java
-package com.example.orders;
-
-import java.util.List;
-
-public class OrderService {
-    public List<String> statuses() {
-        return List.of("NEW", "PAID");
-    }
-}
-```
-
-The package declaration must appear before imports and type declarations. The folder structure conventionally mirrors the package name.
-
-## 4. Encapsulation
-
-Keep fields private and expose operations that protect valid state.
+A package groups related types and provides a namespace. It also participates in access control.
 
 ```java
-public class BankAccount {
-    private long balance;
+package com.example.order.service;
 
-    public void deposit(long amount) {
-        if (amount <= 0) throw new IllegalArgumentException();
-        balance += amount;
-    }
-
-    public long balance() { return balance; }
-}
+import com.example.order.model.Order;
 ```
 
-A public setter for every field is not automatically good encapsulation. Prefer methods that express valid business actions.
+Use clear package boundaries such as controller, service, repository, domain, and configuration where they help organize the application. Avoid treating package structure as a substitute for proper module boundaries.
 
-## 5. Interview questions
+## 5. Imports and fully qualified names
 
-**What is the default access modifier?** If no access modifier is written, the member has package-private access.
+An import lets code use a type's simple name. It does not copy the class into the current package. Two types with the same simple name can be referenced using fully qualified names.
 
-**Can protected be accessed from another package?** Yes, from subclass code, subject to the protected qualifying-reference rule.
+Static imports allow direct access to static members, but excessive static imports can make code harder to read.
 
-**Can a private method be overridden?** No; it is not inherited.
+## 6. Common mistakes
 
-**Why use packages?** To organize code, avoid name collisions and control package-level access.
+- Thinking package-private is the same as protected.
+- Assuming protected is accessible to every class in another package.
+- Declaring every field public.
+- Confusing package names with folder names at runtime (build tools compile package paths, but package identity is part of the class name).
+- Assuming import changes access permissions.
 
-## 6. Practice
+## 7. Interview questions and answers
 
-Create two packages. Try accessing a public, protected, package-private and private field from a class in the second package. Record which statements compile and why.
+**Q1. What are the four access modifiers?**  
+private, package-private (no modifier), protected, and public.
+
+**Q2. Difference between protected and package-private?**  
+Package-private is available only within the same package. Protected is also available to subclasses outside the package under specific access rules.
+
+**Q3. Can a top-level class be private?**  
+No. A top-level class can be public or package-private.
+
+**Q4. Does import make a private class accessible?**  
+No. Imports only resolve names; they do not change visibility.
+
+**Q5. Why keep fields private?**  
+To protect invariants and expose controlled behavior rather than allowing arbitrary external mutation.
+
+## 8. Practice
+
+Create two packages. Define a class with private, package-private, protected, and public members. Test access from a same-package class, unrelated class in another package, and subclass in another package.
+
+## 9. Quick revision
+
+private = class only. package-private = package. protected = package plus subclass access. public = everywhere. Imports do not change visibility.
