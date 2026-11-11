@@ -143,6 +143,8 @@ nav:
           - Routing, HTTP & Interceptors: topics/angular/routing-http-interceptors.md
           - RxJS in Angular: topics/angular/rxjs-angular.md
           - Performance & Testing: topics/angular/performance-testing.md
+          - Directives, Pipes & DI: topics/angular/directives-pipes-di.md
+          - Routing, State & Performance: topics/angular/routing-state-performance.md
       - JavaScript, TypeScript & RxJS:
           - Overview: topics/javascript-typescript-rxjs.md
           - JS Variables, Scope & Hoisting: topics/javascript/variables-scope-hoisting.md
@@ -157,9 +159,13 @@ nav:
           - Subjects, Cold & Hot: topics/rxjs/subjects-cold-hot.md
           - Higher-Order Mapping: topics/rxjs/higher-order-mapping.md
           - RxJS Combination & Errors: topics/rxjs/combination-error-handling.md
+          - Array Methods, Async Errors & Browser Storage: topics/javascript/array-methods-async-errors.md
       - System Design, Cloud & DevOps:
           - Overview: topics/system-design-devops.md
           - Scalability, Caching & Load Balancing: topics/system-design/scalability-caching.md
           - Queues, Rate Limits & Backpressure: topics/system-design/messaging-rate-limits.md
           - Database Scaling: topics/system-design/database-scaling.md
           - Cloud Deployment & Observability: topics/system-design/aws-deployment-observability.md
+          - Requirements & Capacity: topics/system-design/system-design-requirements-capacity.md
+          - File Storage & Notification Ownership: topics/system-design/object-storage-notifications-ownership.md
+          - Docker & CI/CD: topics/system-design/docker-cicd-deployment.md

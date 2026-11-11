@@ -28,3 +28,6 @@ Practise each topic by typing the examples, changing one line and explaining the
 
 ## Collections behavior
 19. [Immutable collections, iterators and fail-fast behavior](core-java/collections-immutability-iteration.md)
+
+## Coding interview problem solving
+20. [Java coding interview patterns](coding-interview/patterns-java.md)

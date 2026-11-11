@@ -153,3 +153,9 @@ This page is the navigation catalogue for the 12 study areas. Detailed topic les
 - SQL: constraints, grouping, NULL semantics, views, materialized views
 - APIs: OAuth 2.0, OIDC, rate limiting, idempotency keys
 - Microservices: Kafka partitions, consumer groups, offsets, delivery semantics
+
+- Build tooling and Git workflows
+- GraphQL and schema federation
+- Spring testing and advanced security
+- Java coding interview patterns
+- Kubernetes application deployment

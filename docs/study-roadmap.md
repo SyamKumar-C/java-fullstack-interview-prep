@@ -130,3 +130,12 @@ Use this as a checklist. Mark a topic complete only when you can explain it, wri
 - [ ] Collection hierarchy, Map variants, unmodifiable views and fail-fast iterators
 - [ ] JavaScript array mutation, async error handling and browser storage
 - [ ] System design requirements, capacity estimation, file storage, notification ownership, Docker and CI/CD
+
+## Additional interview readiness checklist
+- [ ] Maven/Gradle lifecycle, dependency scopes, BOMs and dependency conflicts
+- [ ] Git staging, commits, merge/rebase, conflict resolution, revert/reset/reflog
+- [ ] JUnit, Mockito, Spring test slices, Testcontainers and integration testing
+- [ ] Spring Security filter chain, method security, JWT validation, CSRF/CORS
+- [ ] GraphQL schema, resolvers, N+1, DataLoader and federation
+- [ ] Coding patterns: hash maps, two pointers, sliding window, stack, binary search, BFS/DFS
+- [ ] Kubernetes Pods, Deployments, Services, probes, requests/limits and rollout troubleshooting

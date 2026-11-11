@@ -11,3 +11,6 @@ Further revision: API design, capacity estimation, availability, consistency, pa
 5. [System design requirements and capacity estimation](system-design/system-design-requirements-capacity.md)
 6. [File storage, notifications and service ownership](system-design/object-storage-notifications-ownership.md)
 7. [Docker, CI/CD and deployment strategies](system-design/docker-cicd-deployment.md)
+
+## Kubernetes
+8. [Kubernetes fundamentals for application developers](system-design/kubernetes-fundamentals.md)
