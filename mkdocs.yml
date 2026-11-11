@@ -4,6 +4,7 @@ site_url: https://syamkumar-c.github.io/java-fullstack-interview-prep/
 repo_url: https://github.com/SyamKumar-C/java-fullstack-interview-prep
 repo_name: SyamKumar-C/java-fullstack-interview-prep
 edit_uri: edit/main/docs/
+
 theme:
   name: material
   features:
@@ -28,6 +29,7 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+
 markdown_extensions:
   - admonition
   - attr_list
@@ -43,21 +45,13 @@ markdown_extensions:
       alternate_style: true
   - toc:
       permalink: true
+
 plugins:
   - search
+
 nav:
   - Home: index.md
   - Roadmap: roadmap.md
-  - Topics:
-      - Core Java: topics/index.md#core-java
-      - Collections: topics/index.md#collections
-      - Streams & Functional Programming: topics/index.md#streams-and-functional-programming
-      - Concurrency & JVM: topics/index.md#concurrency-and-jvm
-      - Spring & Spring Boot: topics/index.md#spring-and-spring-boot
-      - JPA & Hibernate: topics/index.md#jpa-and-hibernate
-      - SQL & Databases: topics/index.md#sql-and-databases
-      - REST APIs & Security: topics/index.md#rest-apis-and-security
-      - Microservices: topics/index.md#microservices-and-distributed-systems
-      - Angular: topics/index.md#angular
-      - JavaScript, TypeScript & RxJS: topics/index.md#javascript-typescript-and-rxjs
-      - System Design & DevOps: topics/index.md#system-design-cloud-and-devops
+  - Study Roadmap: study-roadmap.md
+  - Interview Answer Format: interview-answer-format.md
+  - Topics: topics/index.md
