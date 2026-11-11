@@ -58,4 +58,15 @@ nav:
   - Topics:
       - Topic Catalogue: topics/index.md
       - Core Java: topics/core-java.md
-      - Object-Oriented Programming: topics/core-java/oop.md
+      - OOP: topics/core-java/oop.md
+      - Collections: topics/collections.md
+      - Streams & Functional Programming: topics/streams-functional.md
+      - Concurrency & JVM: topics/concurrency-jvm.md
+      - Spring & Spring Boot: topics/spring-boot.md
+      - JPA & Hibernate: topics/jpa-hibernate.md
+      - SQL & Databases: topics/sql-databases.md
+      - REST APIs & Security: topics/rest-security.md
+      - Microservices: topics/microservices.md
+      - Angular: topics/angular.md
+      - JavaScript, TypeScript & RxJS: topics/javascript-typescript-rxjs.md
+      - System Design, Cloud & DevOps: topics/system-design-devops.md
