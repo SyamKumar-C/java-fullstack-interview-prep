@@ -8,3 +8,7 @@
 6. [Performance and testing](angular/performance-testing.md)
 
 Further revision: directives, pipes, dependency injection, standalone APIs, content projection, view queries, route resolvers, lazy loading, state management and Angular CLI/build.
+
+## Additional Angular lessons
+7. [Directives, pipes and dependency injection](angular/directives-pipes-di.md)
+8. [Routing, state and performance](angular/routing-state-performance.md)

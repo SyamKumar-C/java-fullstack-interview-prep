@@ -5,3 +5,6 @@
 3. [CORS, CSRF and cookies](rest/cors-csrf-cookies.md)
 
 Further revision: REST resource design, pagination, filtering, versioning, content negotiation, validation, OAuth2/OIDC basics, password hashing, rate limiting, API keys and secure error responses.
+
+## Additional API lesson
+4. [REST design, OAuth 2.0 and rate limiting](rest/api-design-oauth-rate-limiting.md)

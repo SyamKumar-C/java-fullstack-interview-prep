@@ -6,3 +6,6 @@
 4. [Transactions and normalization](sql/transactions-normalization.md)
 
 Further revision: keys and constraints, aggregate functions, GROUP BY/HAVING, NULL semantics, correlated subqueries, composite/expression/partial indexes, isolation, deadlocks, views and query optimization.
+
+## Additional SQL lesson
+5. [Grouping, constraints, NULL semantics and views](sql/grouping-constraints-null-views.md)

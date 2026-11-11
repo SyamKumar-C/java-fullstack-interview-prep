@@ -19,3 +19,6 @@
 12. [Combination and error handling](rxjs/combination-error-handling.md)
 
 Practise operators with real Angular HTTP/search flows, not only definitions.
+
+## Additional JavaScript lesson
+13. [Array methods, async errors and browser storage](javascript/array-methods-async-errors.md)

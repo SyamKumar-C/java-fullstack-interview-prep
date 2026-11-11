@@ -9,3 +9,6 @@ Study each collection by its internal structure, complexity, ordering, null beha
 5. [Concurrent collections](collections/concurrent-collections.md)
 
 Also revise equals/hashCode from Core Java because hash-based collections depend on that contract. For interviews, be ready to explain complexity and trade-offs rather than only definitions.
+
+## Additional collection lesson
+6. [Collection hierarchy and Map implementations](collections/collection-hierarchy-map-variants.md)

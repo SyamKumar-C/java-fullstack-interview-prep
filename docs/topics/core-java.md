@@ -25,3 +25,6 @@ Study one lesson at a time. Understand the rule, run the example, predict output
 18. [Functional interfaces and lambdas](core-java/functional-interfaces-lambdas.md)
 
 Practise each topic by typing the examples, changing one line and explaining the result without looking at the notes.
+
+## Collections behavior
+19. [Immutable collections, iterators and fail-fast behavior](core-java/collections-immutability-iteration.md)

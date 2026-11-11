@@ -76,6 +76,7 @@ nav:
           - Cloning & Copying: topics/core-java/cloning-copying.md
           - Annotations & Reflection: topics/core-java/annotations-reflection.md
           - Functional Interfaces & Lambdas: topics/core-java/functional-interfaces-lambdas.md
+          - Immutable Collections & Iterators: topics/core-java/collections-immutability-iteration.md
           - OOP Deep Dive: topics/core-java/oop.md
       - Collections:
           - Overview: topics/collections.md
@@ -84,6 +85,7 @@ nav:
           - HashSet, TreeSet, Queue & Deque: topics/collections/hashset-treemap-queue.md
           - Iterators, Comparable & Comparator: topics/collections/iterators-comparable-comparator.md
           - Concurrent Collections: topics/collections/concurrent-collections.md
+          - Collection Hierarchy & Map Variants: topics/collections/collection-hierarchy-map-variants.md
       - Streams & Functional Programming:
           - Overview: topics/streams-functional.md
           - Stream Lifecycle: topics/streams-functional/stream-lifecycle.md
@@ -104,29 +106,35 @@ nav:
           - Configuration & Profiles: topics/spring/spring-configuration-profiles.md
           - REST, Validation & Exceptions: topics/spring/spring-rest-validation-exception.md
           - Transactions: topics/spring/spring-transactions.md
+          - Auto-Configuration & Testing: topics/spring/spring-boot-autoconfiguration-testing.md
+          - Async, Scheduling, Caching & Actuator: topics/spring/spring-async-scheduling-cache-actuator.md
       - JPA & Hibernate:
           - Overview: topics/jpa-hibernate.md
           - Entity States & Mapping: topics/jpa/hibernate-entity-state-mapping.md
           - Fetching & N+1: topics/jpa/fetching-n-plus-one.md
           - Cascades & orphanRemoval: topics/jpa/cascades-orphan-removal.md
           - Transactions & Locking: topics/jpa/transactions-locking.md
+          - JPQL, Projections & Batching: topics/jpa/jpql-criteria-projections-batching.md
       - SQL & Databases:
           - Overview: topics/sql-databases.md
           - Joins & Subqueries: topics/sql/joins-subqueries.md
           - CTEs & Window Functions: topics/sql/window-functions-ctes.md
           - Indexes & Execution Plans: topics/sql/indexes-execution-plans.md
           - Transactions & Normalization: topics/sql/transactions-normalization.md
+          - Grouping, Constraints, NULL & Views: topics/sql/grouping-constraints-null-views.md
       - REST APIs & Security:
           - Overview: topics/rest-security.md
           - HTTP Methods & Status Codes: topics/rest/http-methods-status.md
           - Spring Security & JWT: topics/rest/spring-security-jwt.md
           - CORS, CSRF & Cookies: topics/rest/cors-csrf-cookies.md
+          - API Design, OAuth & Rate Limiting: topics/rest/api-design-oauth-rate-limiting.md
       - Microservices:
           - Overview: topics/microservices.md
           - Service Communication: topics/microservices/service-communication.md
           - Saga, Outbox & Idempotency: topics/microservices/saga-outbox-idempotency.md
           - Discovery, Gateway & Resilience: topics/microservices/discovery-gateway-resilience.md
           - Data Consistency & Observability: topics/microservices/data-consistency-observability.md
+          - Kafka Fundamentals: topics/microservices/kafka-fundamentals.md
       - Angular:
           - Overview: topics/angular.md
           - Components, Templates & Lifecycle: topics/angular/components-templates.md

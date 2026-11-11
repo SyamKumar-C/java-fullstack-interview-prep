@@ -21,3 +21,6 @@ Priorities:
 | System design & DevOps | Design trade-offs, AWS, Docker, CI/CD, observability |
 
 Use the Topics navigation to browse the category list.
+
+## Audit additions
+The detailed lessons now also cover Spring Boot auto-configuration/testing and operational features; JPA projections and batching; SQL constraints/NULL/views; OAuth/OIDC and rate limiting; Kafka fundamentals; Angular directives/DI/routing; collection immutability; browser storage; system design capacity, file ownership, and Docker/CI/CD.

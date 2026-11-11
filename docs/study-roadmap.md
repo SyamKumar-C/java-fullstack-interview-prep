@@ -118,3 +118,15 @@ Use this as a checklist. Mark a topic complete only when you can explain it, wri
 - CI/CD and deployment strategies
 - Coding: arrays, strings, maps, trees, graphs, BFS, and DFS
 - System design exercises and project deep-dives
+
+## Additional coverage checklist
+- [ ] Spring Boot auto-configuration conditions and testing slices
+- [ ] Async executor sizing, scheduling across replicas, cache invalidation, Actuator security
+- [ ] JPQL, Criteria API, DTO projections, Page vs Slice, JDBC batching
+- [ ] SQL constraints, GROUP BY/HAVING, NULL behavior, views and materialized views
+- [ ] REST resource design, OAuth 2.0/OIDC, rate limiting, idempotency keys
+- [ ] Kafka partitions, keys, consumer groups, offsets, retries and dead-letter topics
+- [ ] Angular directives, pipes, DI scopes, guards, resolvers, lazy loading and state
+- [ ] Collection hierarchy, Map variants, unmodifiable views and fail-fast iterators
+- [ ] JavaScript array mutation, async error handling and browser storage
+- [ ] System design requirements, capacity estimation, file storage, notification ownership, Docker and CI/CD

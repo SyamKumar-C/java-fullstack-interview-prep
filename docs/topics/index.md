@@ -146,3 +146,10 @@ This page is the navigation catalogue for the 12 study areas. Detailed topic les
 - AWS EC2, S3, RDS, ECS/EKS, CloudFront
 - Configuration, secrets, observability
 - High availability and disaster recovery
+
+## Coverage additions in this audit
+- Spring Boot: auto-configuration, testing, async execution, scheduling, caching, Actuator
+- JPA: JPQL, Criteria API, projections, pagination, batching
+- SQL: constraints, grouping, NULL semantics, views, materialized views
+- APIs: OAuth 2.0, OIDC, rate limiting, idempotency keys
+- Microservices: Kafka partitions, consumer groups, offsets, delivery semantics

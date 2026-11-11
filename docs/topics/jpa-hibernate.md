@@ -6,3 +6,6 @@
 4. [Transactions, flush and locking](jpa/transactions-locking.md)
 
 Further revision: JPQL vs native SQL, Criteria API, projections, pagination, first-level/second-level cache, optimistic/pessimistic locks, batch inserts, auditing and schema migrations.
+
+## Additional persistence lesson
+5. [JPQL, Criteria API, projections, pagination and batching](jpa/jpql-criteria-projections-batching.md)
