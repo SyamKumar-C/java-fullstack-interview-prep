@@ -1,50 +1,38 @@
 # Java Full-Stack Interview Preparation
 
-A practical knowledge base for Java full-stack interview preparation.
+A practical, searchable knowledge base for Java full-stack developer interviews.
 
-## Focus areas
-- Core Java, OOP, collections, generics, exceptions
-- Java 8+ features, Streams, concurrency, virtual threads, JVM
-- SQL, indexing, query plans, and transactions
-- Spring Framework, Spring Boot, REST APIs, validation, and security
-- JPA, Hibernate, and transaction management
-- Microservices, Kafka, distributed systems, and system design
-- JavaScript, TypeScript, Angular, and RxJS
-- Git, Maven/Gradle, Docker, AWS, and CI/CD
-- Coding exercises and project discussions
+## Documentation website
 
-## How to prepare each topic
-1. Definition in simple words
-2. Why it is needed and what problem it solves
-3. Internal working, where relevant
-4. Small code example
-5. Common mistakes and trade-offs
-6. Interview questions and follow-ups
-7. Real project scenario
+**Website:** https://syamkumar-c.github.io/java-fullstack-interview-prep/
 
-## Suggested study order
-1. Core Java
-2. Collections, Streams, concurrency, and JVM
-3. SQL and database fundamentals
-4. Spring Boot, REST, and security
-5. JPA/Hibernate and transactions
-6. Microservices and system design
-7. JavaScript, TypeScript, Angular, and RxJS
-8. Cloud, DevOps, and coding practice
+The site is built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) and deployed to GitHub Pages through GitHub Actions.
 
-## Progress checklist
-- [ ] Core Java
-- [ ] Collections and Generics
-- [ ] Streams and Functional Programming
-- [ ] Concurrency and Virtual Threads
-- [ ] JVM and Garbage Collection
-- [ ] SQL and Database Indexing
-- [ ] Spring Framework and Spring Boot
-- [ ] JPA, Hibernate, and Transactions
-- [ ] REST APIs and Security
-- [ ] Microservices and Distributed Systems
-- [ ] Angular and RxJS
-- [ ] JavaScript and TypeScript
-- [ ] System Design
-- [ ] Coding Exercises
-- [ ] Cloud and DevOps
+## Repository structure
+
+- `docs/` — documentation content
+- `docs/topics/` — 12 interview-preparation topic categories
+- `docs/roadmap.md` — study roadmap and priorities
+- `mkdocs.yml` — site theme, navigation, and Markdown configuration
+- `requirements.txt` — documentation build dependencies
+- `.github/workflows/deploy.yml` — build and deploy workflow
+
+## Learning format
+
+Topic lessons will cover the definition, purpose, internal working, code examples, trade-offs, common mistakes, interview questions, and practical project scenarios.
+
+## Phases
+
+- **Phase 1:** Documentation platform, topic navigation, search, and GitHub Pages deployment.
+- **Phase 2:** Detailed topic explanations, code examples, diagrams, and expandable interview Q&A.
+- **Phase 3:** Revision tracking and progress dashboard.
+- **Phase 4:** Full topic coverage and coding/system-design practice.
+
+## Local preview
+
+```bash
+pip install -r requirements.txt
+mkdocs serve
+```
+
+Open http://127.0.0.1:8000 to preview the site locally.
