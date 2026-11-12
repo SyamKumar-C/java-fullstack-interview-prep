@@ -60,6 +60,7 @@ nav:
       - Core Java:
           - Overview: topics/core-java.md
           - OOP Principles: topics/core-java/oop-principles.md
+          - Core Java Interview Coverage Checklist: topics/core-java/interview-coverage-checklist.md
           - Classes, Objects & Constructors: topics/core-java/classes-objects-constructors.md
           - Overloading vs Overriding: topics/core-java/overloading-vs-overriding.md
           - Abstract Classes vs Interfaces: topics/core-java/abstract-classes-vs-interfaces.md

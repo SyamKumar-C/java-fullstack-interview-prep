@@ -1,9 +1,9 @@
 # Core Java
 
-Study one lesson at a time. Understand the rule, run the example, predict output and explain it in your own words.
+Study one lesson at a time. Understand the rule, run the example, predict output and explain it in your own words. Use the [Core Java Interview Coverage Checklist](core-java/interview-coverage-checklist.md) to verify that no important subtopic has been skipped.
 
 ## Object-oriented programming
-1. [OOP principles](core-java/oop-principles.md)
+1. [OOP principles and SOLID](core-java/oop-principles.md)
 2. [Classes, objects and constructors](core-java/classes-objects-constructors.md)
 3. [Method overloading vs overriding](core-java/overloading-vs-overriding.md)
 4. [Abstract classes vs interfaces](core-java/abstract-classes-vs-interfaces.md)
@@ -24,10 +24,10 @@ Study one lesson at a time. Understand the rule, run the example, predict output
 17. [Annotations and reflection](core-java/annotations-reflection.md)
 18. [Functional interfaces and lambdas](core-java/functional-interfaces-lambdas.md)
 
-Practise each topic by typing the examples, changing one line and explaining the result without looking at the notes.
-
 ## Collections behavior
 19. [Immutable collections, iterators and fail-fast behavior](core-java/collections-immutability-iteration.md)
 
 ## Coding interview problem solving
 20. [Java coding interview patterns](coding-interview/patterns-java.md)
+
+Practise each topic by typing the examples, changing one line and explaining the result without looking at the notes.
