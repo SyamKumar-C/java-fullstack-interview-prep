@@ -2,11 +2,19 @@
 
 ## 1. List contract
 
-List is an ordered collection. It allows duplicates and supports positional access. Common implementations include ArrayList, LinkedList and CopyOnWriteArrayList.
+List is an ordered collection. It preserves positional order, allows duplicates, and provides index-based access. Common implementations include ArrayList, LinkedList and CopyOnWriteArrayList.
 
-## 2. ArrayList
+List is an interface; choose an implementation based on the access pattern rather than declaring every variable as ArrayList.
 
-ArrayList uses a resizable array. It provides fast index access, typically O(1), and amortized O(1) append. Inserting or removing near the beginning or middle shifts later elements and is O(n).
+## 2. ArrayList internals
+
+ArrayList uses a resizable array (an Object array internally). It tracks the number of elements separately from backing-array capacity.
+
+- `get(index)` and `set(index)`: O(1).
+- Append: amortized O(1); occasional resize copies the backing array.
+- Insert/remove at index: O(n) due to shifting elements.
+- Search by value: O(n).
+- Memory: contiguous reference array, generally good cache locality.
 
 ```java
 List<String> names = new ArrayList<>();
@@ -16,66 +24,87 @@ names.add(1, "Mina");
 System.out.println(names.get(1)); // Mina
 ```
 
-Capacity can grow automatically. The default growth strategy is an implementation detail; do not write code that depends on an exact capacity increase.
+Capacity growth policy is an implementation detail. Do not depend on an exact growth factor.
 
-## 3. LinkedList
+## 3. LinkedList internals
 
-LinkedList is a doubly linked list. Adding/removing at either end is O(1) when the position is already known. Access by index is O(n), because it must traverse nodes.
+LinkedList is a doubly linked list. Each node stores an element and links to previous/next nodes.
 
-It also implements Deque, so it can be used as a queue or deque. ArrayDeque is often a better choice for stack/queue use because it avoids per-node allocation.
+- Add/remove at head or tail: O(1).
+- Access by index: O(n), because nodes must be traversed.
+- Insert/remove at a known ListIterator position: O(1) relinking.
+- Search or find a position by value/index: O(n).
+- Memory: extra node and link overhead; weaker cache locality.
+
+LinkedList implements both List and Deque. ArrayDeque is usually a better default for queue/stack operations because it avoids one node allocation per element.
 
 ## 4. Comparison
 
-| Feature | ArrayList | LinkedList |
-|---|---|---|
-| Internal structure | Resizable array | Doubly linked nodes |
+| Operation | ArrayList | LinkedList |
+|---|---:|---:|
 | get(index) | O(1) | O(n) |
 | Append | Amortized O(1) | O(1) |
-| Insert/remove middle | O(n) shifting | O(n) to find position, then O(1) relink |
-| Memory overhead | Lower | Higher per node |
-| Cache locality | Better | Worse |
+| Add/remove first | O(n) | O(1) |
+| Insert/remove middle by index | O(n) | O(n) to find; O(1) relink after location |
+| Search by value | O(n) | O(n) |
+| Memory/locality | Lower overhead, good locality | Higher overhead, pointer traversal |
 
-LinkedList is not automatically faster for insertion. Finding the insertion point may dominate the cost.
+LinkedList is not automatically faster for insertion: locating the insertion point may cost O(n).
 
-## 5. Iteration and modification
+## 5. ArrayList capacity and memory
 
-Structural modification while using a fail-fast iterator may cause ConcurrentModificationException. Use the iterator's own `remove()` method when removing during iteration.
+An ArrayList has a logical size and a backing array capacity. Removing elements reduces size but may not shrink the backing array automatically. `trimToSize()` can reduce capacity to current size, but use it only when appropriate because later additions may trigger another resize.
+
+If the expected element count is known, `new ArrayList<>(expectedCount)` can reduce resizing. It sets initial capacity, not list size; the list is still empty.
+
+## 6. Iteration and modification
+
+Structural modification outside a fail-fast iterator may cause ConcurrentModificationException. Use iterator.remove for supported removal during traversal, or `removeIf` for predicate-based removal.
 
 ```java
-Iterator<String> it = names.iterator();
-while (it.hasNext()) {
-    if (it.next().isBlank()) {
-        it.remove();
-    }
-}
+names.removeIf(String::isBlank);
 ```
 
-Fail-fast behavior is best-effort bug detection, not a thread-safety guarantee.
+Fail-fast is best-effort bug detection, not a thread-safety guarantee.
 
-## 6. Practical scenarios
+## 7. Choosing an implementation
 
-- API response list with frequent indexed reads: ArrayList.
-- Queue/stack operations: ArrayDeque.
-- Frequent insertion in the middle after locating a node: consider LinkedList only after measuring.
-- Concurrent read-heavy list: CopyOnWriteArrayList may fit if writes are rare.
+- Frequent index reads and appends: ArrayList.
+- Queue/stack operations at both ends: ArrayDeque.
+- Frequent traversal and rare writes across threads: CopyOnWriteArrayList may fit.
+- LinkedList: consider only when its end operations or iterator-position edits match the workload and measurements justify it.
 
-## 7. Common mistakes
+For frequent membership checks, consider a Set. For concurrent access, choose a concurrent collection or explicit synchronization.
 
-- Choosing LinkedList because insertion is assumed to be O(1) in every case.
-- Using a list for frequent membership checks when a Set is more suitable.
-- Modifying a list structurally inside an enhanced for-loop.
+## 8. Common mistakes
+
+- Choosing LinkedList because insertion is assumed to always be O(1).
+- Confusing ArrayList capacity with size.
 - Assuming ArrayList is thread-safe.
+- Removing directly from a list inside an enhanced for loop.
+- Using a List when uniqueness is the real requirement.
+- Using LinkedList as the default queue instead of considering ArrayDeque or BlockingQueue.
 
-## 8. Interview questions
+## 9. Interview questions
 
-**Q1. ArrayList vs LinkedList?** ArrayList offers fast indexed access and better locality; LinkedList has efficient end operations but slow indexed access and more memory overhead.
+**Q1. ArrayList vs LinkedList?**  
+ArrayList has fast indexed access and better locality. LinkedList has efficient end operations but slow indexed access and greater memory overhead.
 
-**Q2. Why is ArrayList append amortized O(1)?** Most appends are constant time; occasional resizing copies the backing array, and that cost is spread across many appends.
+**Q2. Why is ArrayList append amortized O(1)?**  
+Most appends are constant time; occasional array growth copies elements, and that cost is spread across many appends.
 
-**Q3. Is ArrayList thread-safe?** No. Use external synchronization or an appropriate concurrent collection.
+**Q3. Does new ArrayList<>(100) create 100 elements?**  
+No. It creates capacity for about 100 elements; size remains zero.
 
-**Q4. What is fail-fast?** Iterators may detect structural modification outside the iterator and throw ConcurrentModificationException.
+**Q4. Is LinkedList insertion always O(1)?**  
+No. Finding the insertion position may take O(n). Relinking is O(1) once the node position is known.
 
-## 9. Practice
+**Q5. Is ArrayList thread-safe?**  
+No. Use external synchronization or an appropriate concurrent collection.
 
-Write a benchmark-style comparison for repeated get(index), append and remove-first operations. Explain why the data size and access pattern matter.
+## 10. Practice
+
+1. Compare indexed reads, append and remove-first operations for ArrayList and LinkedList.
+2. Demonstrate the difference between ArrayList size and capacity.
+3. Remove blank strings using removeIf and Iterator.remove.
+4. Explain which collection you would use for an in-memory job queue and why.

@@ -2,13 +2,19 @@
 
 ## 1. Why concurrent collections?
 
-A normal collection such as ArrayList or HashMap is not designed for unsynchronized concurrent modification by multiple threads. Concurrent collections provide thread-safe operations with defined concurrency behavior.
+ArrayList, HashMap and most ordinary collections do not support unsynchronized concurrent structural updates. Concurrent collections provide defined thread-safe operations and iteration behavior.
 
-Thread-safe does not automatically mean every multi-step business operation is atomic. Choose the collection based on the operation and consistency needed.
+**Thread-safe does not mean every multi-step workflow is atomic.** Choose the collection based on the operation, consistency and backpressure requirements.
 
 ## 2. ConcurrentHashMap
 
-ConcurrentHashMap supports concurrent reads and updates. It does not allow null keys or values. Individual operations such as `putIfAbsent`, `compute` and `merge` are atomic for the relevant key.
+ConcurrentHashMap supports concurrent reads and updates. It rejects null keys and values. It does not lock the entire map for every operation; modern implementations coordinate updates at a finer level and support concurrent reads.
+
+Useful atomic per-key methods include:
+- `putIfAbsent`
+- `computeIfAbsent`, `computeIfPresent`, `compute`
+- `merge`
+- `replace`, conditional `remove`
 
 ```java
 ConcurrentMap<String, Long> counts = new ConcurrentHashMap<>();
@@ -16,71 +22,109 @@ counts.merge("login", 1L, Long::sum);
 counts.putIfAbsent("status", 0L);
 ```
 
-Prefer atomic map methods over a separate get-then-put sequence, which can race.
+Avoid a separate get-then-put sequence for a shared counter; two threads can read the same old value and overwrite each other's update.
+
+### Why does ConcurrentHashMap reject null?
+
+A null return from get can safely mean there is no mapping. Allowing null values would make absence harder to distinguish during concurrent operations.
+
+### Iteration
+
+Iterators are weakly consistent: they can reflect some updates made after iteration starts, do not throw ConcurrentModificationException merely because of concurrent updates, and are not a fixed snapshot.
 
 ## 3. CopyOnWriteArrayList
 
-Every write creates a fresh backing array. Iterators see a snapshot and do not throw ConcurrentModificationException because another thread updates the list.
+Every write creates a new backing array. Readers and iterators use the array snapshot captured for that operation/iterator.
 
-Good for many reads and very few writes, such as a listener registry. Poor for frequent writes or very large lists because copying is expensive.
+Use it when reads and iteration are frequent and writes are rare, for example a listener registry. Avoid it for large lists with frequent writes because each update copies the array.
 
-## 4. BlockingQueue
+## 4. BlockingQueue and producer-consumer
 
-A BlockingQueue supports producer-consumer workflows. A producer can wait when the queue is full, and a consumer can wait when it is empty.
+BlockingQueue supports producer-consumer workflows. A producer can wait when a bounded queue is full; a consumer can wait when it is empty.
 
-Common implementations:
-- `ArrayBlockingQueue`: bounded array-backed queue.
-- `LinkedBlockingQueue`: optionally bounded linked queue.
-- `PriorityBlockingQueue`: priority ordering, generally unbounded.
-- `SynchronousQueue`: direct handoff; no stored elements.
+| Implementation | Characteristics |
+|---|---|
+| ArrayBlockingQueue | Bounded, array-backed |
+| LinkedBlockingQueue | Linked; optionally bounded |
+| PriorityBlockingQueue | Priority order; effectively unbounded |
+| SynchronousQueue | Direct handoff; stores no elements |
+| DelayQueue | Elements become available after their delay |
 
 ```java
-BlockingQueue<String> queue = new ArrayBlockingQueue<>(100);
-queue.put("job-1");       // waits if full
-String job = queue.take(); // waits if empty
+BlockingQueue<String> jobs = new ArrayBlockingQueue<>(100);
+jobs.put("job-1");       // waits while full
+String job = jobs.take(); // waits while empty
 ```
 
-## 5. Other collections
+A bounded queue provides backpressure. An unbounded queue can grow until the application runs out of memory if producers outpace consumers.
 
-- `ConcurrentLinkedQueue`: non-blocking, unbounded queue.
-- `ConcurrentSkipListMap`: concurrent sorted map.
-- `Collections.synchronizedList`: synchronized wrapper; iteration still requires external synchronization on the wrapper.
+## 5. Other concurrent collections
 
-## 6. Choosing a collection
+- ConcurrentLinkedQueue: non-blocking unbounded queue.
+- ConcurrentSkipListMap: concurrent sorted map with expected logarithmic operations.
+- Collections.synchronizedList: synchronized wrapper; iteration requires external synchronization on the wrapper.
+- Vector and Hashtable: legacy synchronized collections; modern alternatives are usually clearer.
+
+## 6. Selection guide
 
 | Requirement | Candidate |
 |---|---|
 | Concurrent key/value access | ConcurrentHashMap |
 | Many reads, rare writes, snapshot iteration | CopyOnWriteArrayList |
-| Producer-consumer with backpressure | BlockingQueue |
+| Producer-consumer with bounded backpressure | ArrayBlockingQueue or bounded LinkedBlockingQueue |
 | Concurrent sorted keys | ConcurrentSkipListMap |
-| Simple synchronized wrapper | Collections.synchronizedX |
+| Non-blocking concurrent queue | ConcurrentLinkedQueue |
+| Existing API needs a synchronized wrapper | Collections.synchronizedX |
 
-## 7. Practical scenarios
+## 7. Practical project examples
 
-- Cache counters: ConcurrentHashMap.merge.
-- Event listeners: CopyOnWriteArrayList if listener changes are rare.
-- Background job workers: bounded BlockingQueue to apply backpressure.
-- Rate-limiter state: atomic map operations plus a carefully designed value object.
+- Shared in-memory counters: ConcurrentHashMap.merge.
+- Event listener list: CopyOnWriteArrayList if registrations change rarely.
+- Background job workers: bounded BlockingQueue with a defined rejection/backpressure policy.
+- Concurrent in-memory index: ConcurrentHashMap with immutable values.
+- Distributed coordination across multiple application instances: use a database/Redis/broker coordination design, not only an in-process concurrent collection.
 
-## 8. Common mistakes
+## 8. Atomicity traps
 
-- Assuming a thread-safe collection makes a sequence of operations atomic.
-- Using CopyOnWriteArrayList for frequent writes.
-- Using an unbounded queue and allowing memory to grow without limit.
-- Iterating a synchronized wrapper without synchronizing on it.
-- Using ConcurrentHashMap when a database transaction or distributed lock is required across multiple application instances.
+This is not atomic as a whole:
+
+```java
+if (!map.containsKey(key)) {
+    map.put(key, value);
+}
+```
+
+Use `putIfAbsent` for that per-key operation. Likewise, a concurrent map does not make a mutable object stored as its value thread-safe. Synchronize or use immutable/atomic value objects.
 
 ## 9. Interview questions
 
-**Q1. HashMap vs ConcurrentHashMap?** HashMap is not safe for concurrent updates; ConcurrentHashMap supports concurrent access and atomic per-key operations.
+**Q1. HashMap vs ConcurrentHashMap?**  
+HashMap is not safe for concurrent updates. ConcurrentHashMap supports concurrent operations and atomic per-key methods.
 
-**Q2. Why does ConcurrentHashMap reject null?** Null would make it unclear whether a null result means no mapping or a mapped null value in concurrent operations.
+**Q2. Why does ConcurrentHashMap reject null?**  
+It keeps null from being ambiguous with an absent mapping during concurrent lookups.
 
-**Q3. When is CopyOnWriteArrayList useful?** When reads and iteration greatly outnumber writes.
+**Q3. What is weakly consistent iteration?**  
+The iterator can reflect some concurrent changes, does not fail fast for those changes, and is not a fixed snapshot.
 
-**Q4. What is a BlockingQueue?** A queue whose put/take operations can wait for capacity or data.
+**Q4. When is CopyOnWriteArrayList useful?**  
+When reads vastly outnumber writes and snapshot iteration is acceptable.
+
+**Q5. What is BlockingQueue?**  
+A queue with blocking operations such as put/take that wait for capacity or an available item.
+
+**Q6. Why use a bounded queue?**  
+It limits memory growth and applies backpressure when consumers cannot keep up.
+
+**Q7. Does ConcurrentHashMap make its values thread-safe?**  
+No. The value object needs its own immutability or concurrency control.
+
+**Q8. Is ConcurrentHashMap a distributed cache?**  
+No. It is local to one JVM. Multiple application instances have separate maps.
 
 ## 10. Practice
 
-Build a producer-consumer example with a bounded ArrayBlockingQueue. Then replace a shared HashMap counter with ConcurrentHashMap.merge and explain the race it prevents.
+1. Implement a frequency counter with ConcurrentHashMap.merge.
+2. Build producer and consumer threads using a bounded ArrayBlockingQueue.
+3. Demonstrate CopyOnWriteArrayList iterator snapshot behavior.
+4. Show why containsKey followed by put is a race and replace it with putIfAbsent.

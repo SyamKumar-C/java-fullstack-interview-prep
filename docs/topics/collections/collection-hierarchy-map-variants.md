@@ -1,40 +1,57 @@
 # Java Collection Hierarchy and Map Implementations
 
-> Priority: P1 | Level: Intermediate | Study time: 40 minutes
+## 1. The hierarchy
 
-## 1. Collection hierarchy
-- Collection: root for groups of elements.
-- List: ordered sequence; duplicates allowed.
-- Set: no duplicates according to equality/comparison rules.
-- Queue: elements waiting for processing.
-- Deque: double-ended queue.
-- Map: key-value mapping; Map is separate from Collection.
+`Iterable` provides the ability to obtain an Iterator. `Collection` extends Iterable and is the main root for groups of individual elements.
 
 ```text
 Iterable
   └── Collection
       ├── List
       ├── Set
-      │   └── SortedSet / NavigableSet
+      │   └── SortedSet
+      │       └── NavigableSet
       └── Queue
           └── Deque
 
 Map (separate hierarchy)
-  ├── SortedMap / NavigableMap
+  ├── SortedMap
+  │   └── NavigableMap
   └── ConcurrentMap
 ```
 
-## 2. Map implementations
+Map is not a subtype of Collection because it stores key-value mappings rather than individual elements.
 
-| Type | Ordering | Typical use |
-|---|---|---|
-| HashMap | No iteration-order guarantee | General lookup |
-| LinkedHashMap | Insertion order by default; optional access order | Predictable iteration |
-| TreeMap | Sorted by key | Range and sorted-key operations |
-| ConcurrentHashMap | No general order guarantee | Concurrent access |
-| Hashtable | Legacy synchronized map | Usually prefer modern alternatives |
+## 2. Core interfaces
 
-## 3. LinkedHashMap access order
+| Interface | Main contract |
+|---|---|
+| List | Ordered sequence, duplicates allowed, index access |
+| Set | No duplicate elements according to equality/order |
+| Queue | Elements waiting for retrieval/processing |
+| Deque | Insert/remove at both ends |
+| Map | Key-value mappings; keys are unique |
+| SortedSet/SortedMap | Elements/keys kept in sorted order |
+| NavigableSet/NavigableMap | Neighbour/range navigation methods |
+| BlockingQueue | Blocking producer-consumer operations |
+| ConcurrentMap | Concurrent map operations |
+
+## 3. Map implementations
+
+| Implementation | Ordering | Thread safety | Typical purpose |
+|---|---|---|---|
+| HashMap | No guarantee | No | General lookup |
+| LinkedHashMap | Insertion or access order | No | Predictable iteration/LRU building block |
+| TreeMap | Sorted by key | No | Range and sorted-key operations |
+| ConcurrentHashMap | No guarantee | Concurrent operations | Concurrent in-memory lookup |
+| Hashtable | No guarantee | Legacy synchronized | Usually avoid in new code |
+| EnumMap | Enum key declaration order | No | Efficient map with enum keys |
+| IdentityHashMap | Reference identity, not equals | No | Specialized identity-based maps |
+| WeakHashMap | No iteration order guarantee | No | Entries can disappear when keys are no longer strongly referenced |
+
+Do not choose specialized maps without understanding their unusual key and lifecycle semantics.
+
+## 4. LinkedHashMap access order
 
 ```java
 Map<Integer, String> map = new LinkedHashMap<>(16, 0.75f, true);
@@ -45,48 +62,81 @@ map.get(1);
 System.out.println(map.keySet()); // [2, 3, 1]
 ```
 
-The third constructor argument enables access order. This can be a building block for an LRU cache, but a production cache also needs expiry, size, and concurrency policies.
+The third constructor argument enables access order. LinkedHashMap can be used as a basic LRU building block by combining access order with removeEldestEntry, but a production cache also needs expiry, concurrency, size and metrics policies.
 
-## 4. TreeMap
-TreeMap sorts keys using natural ordering or a Comparator. Basic get/put/remove operations are O(log n).
+## 5. Sorted and navigable operations
 
-```java
-Map<String, Integer> scores = new TreeMap<>();
-scores.put("Maya", 90);
-scores.put("Arun", 85);
-System.out.println(scores); // {Arun=85, Maya=90}
-```
+TreeMap and TreeSet support methods such as:
+- firstKey/lastKey or first/last.
+- lower/floor/ceiling/higher.
+- headMap/tailMap/subMap.
+- descendingMap/descendingSet.
 
-## 5. Choose by requirement
-- Index access: List.
-- Uniqueness without order: HashSet.
-- Insertion order: LinkedHashSet/LinkedHashMap.
-- Sorted/range operations: TreeSet/TreeMap.
-- Producer-consumer: Queue/BlockingQueue.
-- Concurrent key-value access: ConcurrentHashMap.
+These are useful for range queries, nearest-key lookups and time/ID ordered data.
 
-Hash collections depend on equals/hashCode. Tree collections use comparison; a comparator returning zero treats keys as equivalent for map/set uniqueness. Null support varies: HashMap allows a null key; ConcurrentHashMap does not.
+## 6. How to choose
 
-## 6. Common mistakes
-- Assuming HashMap preserves insertion order.
-- Assuming Map extends Collection.
-- Mutating a key after inserting it into HashMap.
-- Using Comparator inconsistent with equals without understanding uniqueness.
-- Assuming ConcurrentHashMap makes mutable values thread-safe.
+- Need positional access and duplicates: List.
+- Need uniqueness: Set.
+- Need key/value lookup: Map.
+- Need sorted keys or range queries: TreeMap.
+- Need predictable insertion/access order: LinkedHashMap.
+- Need concurrent per-key operations: ConcurrentHashMap.
+- Need enum keys: EnumMap.
+- Need producer-consumer: BlockingQueue.
+- Need stack/queue at both ends: Deque.
 
-## 7. Interview questions
-**Q1. Why is Map separate from Collection?** Map stores key-value associations, not individual elements.
+Hash-based structures depend on equals/hashCode. Sorted structures depend on Comparable/Comparator. A comparator returning zero means equivalent ordering keys in TreeMap/TreeSet, even if equals returns false.
 
-**Q2. HashMap vs LinkedHashMap?** LinkedHashMap maintains predictable iteration order.
+## 7. Null behavior reminders
 
-**Q3. HashMap vs TreeMap?** Expected constant-time basic operations versus sorted keys with logarithmic operations.
+Null support differs by implementation:
+- HashMap: one null key and null values allowed.
+- ConcurrentHashMap: no null keys or values.
+- TreeMap: natural ordering does not accept a null key; a custom comparator may define null handling.
+- ArrayDeque: no null elements.
+- List.of/List.copyOf: no null elements.
+- HashSet: one null element.
 
-**Q4. Can ConcurrentHashMap contain null?** No, it disallows null keys and values.
+Always check the concrete implementation contract rather than assuming all collections treat null the same way.
 
-**Q5. Can TreeMap use custom order?** Yes, pass a Comparator.
+## 8. Common interview mistakes
 
-## 8. Practice
-1. Count word frequency with HashMap.
-2. Preserve insertion order with LinkedHashMap.
-3. Create a sorted report with TreeMap.
-4. Explain why a mutable key can become unreachable.
+- Saying Map extends Collection.
+- Assuming all Set implementations use hashCode/equals.
+- Assuming all Queue implementations are FIFO.
+- Assuming every collection allows null.
+- Confusing sorted order with insertion order.
+- Assuming concurrent collections coordinate across multiple JVMs.
+- Ignoring comparator consistency with equals.
+
+## 9. Interview questions
+
+**Q1. Why is Map separate from Collection?**  
+Map stores key-value pairs, not individual elements.
+
+**Q2. HashMap vs LinkedHashMap?**  
+LinkedHashMap maintains insertion or access iteration order; HashMap does not guarantee order.
+
+**Q3. HashMap vs TreeMap?**  
+HashMap is hash-based with expected O(1) basic operations; TreeMap sorts keys with O(log n) basic operations.
+
+**Q4. What is NavigableMap?**  
+A sorted map with navigation methods such as lowerEntry, floorEntry, ceilingEntry and higherEntry.
+
+**Q5. When use EnumMap?**  
+When keys are values of one enum type; it is compact and efficient.
+
+**Q6. What makes IdentityHashMap different?**  
+It compares keys by reference identity (==), not equals. It is for specialized cases, not a general replacement for HashMap.
+
+**Q7. Can ConcurrentHashMap be shared across application instances?**  
+No. It is local to one JVM.
+
+## 10. Practice
+
+1. Select a collection for a list of unique sorted customer IDs.
+2. Implement an insertion-order report with LinkedHashMap.
+3. Build a basic access-order map and explain its LRU behavior.
+4. Compare EnumMap and HashMap for enum keys.
+5. Explain why IdentityHashMap should not be used for ordinary business-key lookup.

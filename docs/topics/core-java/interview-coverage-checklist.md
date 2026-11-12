@@ -86,6 +86,31 @@ Use this checklist to verify understanding, not to count pages. A topic is compl
 - [ ] Retryable versus non-retryable failures
 - [ ] Why not to swallow exceptions or expose stack traces
 
+
+## Collections and Map implementations
+
+- [ ] Collection hierarchy: Iterable, Collection, List, Set, Queue, Deque; Map is separate
+- [ ] ArrayList internals, size versus capacity, resize and amortized append
+- [ ] LinkedList doubly linked structure and the cost of finding an insertion position
+- [ ] HashMap hash spreading, bucket indexing, put/get and collision handling
+- [ ] HashMap capacity, load factor, threshold, resize and tree bins
+- [ ] HashMap null behavior, iteration order and fail-fast limitation
+- [ ] equals/hashCode contract and mutable-key failure
+- [ ] HashSet backing map and uniqueness
+- [ ] LinkedHashMap insertion/access order and LRU building-block use
+- [ ] TreeMap/TreeSet ordering, range methods and comparator consistency
+- [ ] PriorityQueue heap behavior and why iteration is not sorted
+- [ ] Queue add/offer, remove/poll, element/peek differences
+- [ ] Deque/ArrayDeque for stack and queue use
+- [ ] Comparable versus Comparator, chaining and overflow-safe comparisons
+- [ ] Iterator versus ListIterator and iterator.remove
+- [ ] Fail-fast versus weakly consistent versus snapshot iterators
+- [ ] ConcurrentHashMap per-key atomic methods and null restrictions
+- [ ] CopyOnWriteArrayList read/write trade-offs
+- [ ] BlockingQueue, bounded queues and backpressure
+- [ ] Unmodifiable view versus snapshot; shallow versus deep immutability
+- [ ] Choose an implementation for a scenario and justify complexity, order, null and thread-safety
+
 ## Interview readiness
 
 - [ ] Explain each concept in a 30–60 second answer

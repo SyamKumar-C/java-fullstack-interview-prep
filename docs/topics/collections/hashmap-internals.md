@@ -1,154 +1,186 @@
 # HashMap Internals in Java
 
-## 1. What is HashMap?
+## 1. What HashMap provides
 
-`HashMap<K,V>` stores key-value mappings and provides average constant-time lookup and insertion when hashes are well distributed. It does not guarantee iteration order and is not thread-safe.
+`HashMap<K,V>` stores key-value mappings. It gives expected O(1) get/put/remove when hashes are well distributed. It does not guarantee iteration order and is not thread-safe.
 
-Use it for fast lookup by a key, such as employeeId to Employee or productCode to stock details.
+Typical use: map an employee ID to an Employee, count words, or look up configuration by key.
 
-## 2. Internal data structure
+## 2. Internal structure
 
-A HashMap maintains an array of buckets. A bucket can be empty or contain one or more entries. In modern Java implementations, a heavily collided bucket can be represented as a balanced tree after certain thresholds are met.
+A HashMap uses a table (array) of buckets. Each bucket may be empty or contain:
+- One node.
+- A linked chain of nodes after collisions.
+- A balanced red-black tree for a heavily collided bin in modern OpenJDK implementations.
 
-An entry conceptually contains:
-- hash
-- key
-- value
-- next entry reference (for a linked bin)
+A node conceptually stores hash, key, value and a next reference. This is an implementation description, not a public API guarantee.
 
-Implementation details can vary by Java version; the bucket and collision model is the important interview concept.
+## 3. How hash calculation and bucket index work
 
-## 3. How put() works
+HashMap calls the key's `hashCode()`. In OpenJDK implementations, high bits are spread into lower bits, because the bucket index uses a mask and otherwise some high-bit differences would not help select a bucket.
 
-Simplified flow:
-
-1. If the table is not initialized, allocate it.
-2. Compute the key hash (null key is handled specially).
-3. Spread high hash bits so more bits can affect bucket selection.
-4. Calculate the bucket index using the table capacity.
-5. If the bucket is empty, insert a node.
-6. If occupied, compare hashes and then keys using identity or `equals()`.
-7. If the key already exists, replace its value.
-8. Otherwise add a new node to the bin (or tree structure).
-9. Increase size and resize if the threshold is exceeded.
-
-Simplified illustration (not the exact JDK source):
+Simplified illustration (not exact JDK source):
 
 ```java
-int hash = key == null ? 0 : spread(key.hashCode());
+int h = key == null ? 0 : key.hashCode();
+int hash = h ^ (h >>> 16);
 int index = (table.length - 1) & hash;
 ```
 
-The table capacity is kept as a power of two in common OpenJDK implementations, making this index calculation efficient.
+The table capacity is maintained as a power of two in common OpenJDK implementations. The bit mask is then an efficient way to calculate the bucket index.
 
-## 4. How get() works
+A null key is handled with hash zero. HashMap permits one null key and multiple null values.
 
-1. Calculate the requested key's hash.
-2. Find the bucket index.
-3. Check the first node.
-4. Compare hash and key equality.
-5. Search the remaining list or tree if needed.
-6. Return the value, or null if no mapping exists.
+## 4. How put(key, value) works
 
-Because null values are allowed, use `containsKey(key)` when you must distinguish an absent key from a key mapped to null.
+Simplified sequence:
 
-## 5. hashCode() and equals()
+1. Initialize the table if required.
+2. Calculate the key hash and bucket index.
+3. If the bucket is empty, insert a node.
+4. If the first node matches by hash and key equality, replace its value.
+5. Otherwise search the list/tree in the bucket.
+6. If an equal key exists, replace its value.
+7. If not, add a new node to the bin.
+8. Increase mapping count; resize when the threshold is crossed.
 
-The hash identifies a likely bucket; equals determines whether a key is logically the same as an existing key.
+The key match is based on hash plus identity/equality. A good `equals()` and `hashCode()` contract is essential.
 
-Contract:
-- If `a.equals(b)` is true, `a.hashCode()` must equal `b.hashCode()`.
-- Equal hash codes do not require equal objects.
-- Equality fields of a key should not change while it is stored in the map.
+## 5. How get(key) works
 
-A broken contract can make a logically equal key impossible to find.
+1. Calculate the key hash and bucket index.
+2. Check the first node.
+3. Compare hash and key identity/equality.
+4. Search the rest of the linked bin or tree if needed.
+5. Return the value, or null if no mapping exists.
 
-## 6. Collision handling and treeification
+Because null values are allowed, a null result alone cannot tell whether a key is absent or mapped to null. Use `containsKey(key)` when that distinction matters.
 
-A collision occurs when different keys map to the same bucket. HashMap handles collisions by storing multiple entries in that bucket.
+## 6. Collision handling and tree bins
 
-In OpenJDK 8 and later, bins can be converted from linked nodes to tree nodes when the bin is sufficiently large and the table is large enough. Commonly discussed implementation thresholds are treeify threshold 8, minimum treeify capacity 64, and untreeify threshold 6. Treat these as implementation details, not a permanent API guarantee.
+A collision means multiple keys map to the same bucket. HashMap keeps them in the same bin and distinguishes them using key equality.
 
-Tree bins improve worst-case lookup behavior for suitable keys, but good hash distribution is still important.
+OpenJDK 8+ can convert a long linked bin into a red-black tree when thresholds and table-size conditions are met. Common implementation constants are:
+- Treeify threshold: 8 nodes.
+- Minimum table capacity for treeification: 64.
+- Untreeify threshold: 6 nodes.
 
-## 7. Capacity, load factor and resizing
+These are implementation details, not contractual guarantees. When the table is too small, resizing may be preferred over treeification. Tree bins improve collision-heavy lookup behavior, but do not make poor hash functions desirable.
 
-- Capacity: number of buckets in the table.
-- Load factor: how full the table may become before resizing.
-- Threshold: capacity multiplied by load factor.
+## 7. Capacity, load factor, threshold and resize
 
-Default initial capacity is commonly 16 and default load factor 0.75. When size exceeds threshold, the table grows (commonly doubles), and entries are redistributed. Resizing costs time, so if expected size is known, pre-sizing can reduce repeated resizing.
+- **Size:** number of mappings currently stored.
+- **Capacity:** number of buckets in the table.
+- **Load factor:** occupancy ratio used to calculate the resize threshold.
+- **Threshold:** commonly capacity multiplied by load factor.
+
+Default initial capacity is 16 and default load factor is 0.75 in standard HashMap constructors. When size exceeds threshold, the table grows, commonly doubling its capacity.
+
+Resizing redistributes nodes into the new table. In OpenJDK 8+, when capacity doubles, a node from an old bucket generally either stays at the same index or moves by the old capacity, based on one hash bit. This avoids recomputing the full hash.
+
+If expected mappings are known, pre-size to reduce repeated resizing. Constructor capacity is not necessarily the exact mapping count you can store before resize because load factor affects threshold.
+
+## 8. Complexity and performance
+
+| Operation | Expected case | Notes |
+|---|---:|---|
+| get | O(1) | Depends on hash distribution |
+| put | O(1) amortized | Resize can make an individual operation expensive |
+| remove | O(1) average | Depends on bin shape |
+| iteration | O(capacity + size) | Scans table and entries |
+
+Collision-heavy behavior can degrade. Tree bins improve suitable collision cases, but complexity is not a real-time guarantee.
+
+## 9. equals() and hashCode() contract
+
+- If `a.equals(b)` is true, both must return the same hash code.
+- Equal hash codes do not mean objects are equal.
+- Do not mutate fields used by equality/hash calculation while a key is stored in the map.
+
+If a key's hash changes after insertion, lookup may search a different bucket from the one holding the entry.
+
+## 10. Important API methods
+
+- `putIfAbsent(k, v)`: add only when no non-null mapping is present.
+- `getOrDefault(k, defaultValue)`: return a default if no mapping exists.
+- `computeIfAbsent(k, fn)`: calculate and store a value when absent/null.
+- `computeIfPresent(k, fn)`: recalculate an existing non-null mapping.
+- `compute(k, fn)`: recalculate based on current mapping; returning null removes the mapping.
+- `merge(k, value, fn)`: insert value if absent/null; otherwise combine.
+- `containsKey(k)`: distinguish missing key from key mapped to null.
 
 ```java
-Map<Long, Employee> byId = new HashMap<>(expectedSize);
+Map<String, Long> counts = new HashMap<>();
+counts.merge("java", 1L, Long::sum);
+counts.merge("java", 1L, Long::sum);
+counts.merge("spring", 1L, Long::sum);
+// java -> 2, spring -> 1
 ```
 
-Be aware that constructor capacity is not always the exact number of expected mappings because the load factor affects the threshold.
+These methods make single-threaded update logic concise. HashMap itself is still not safe for unsynchronized concurrent updates.
 
-## 8. Complexity
+## 11. HashMap vs related maps
 
-| Operation | Typical average | Collision-heavy case |
-|---|---:|---:|
-| get | O(1) | Can degrade; tree bins improve suitable cases |
-| put | O(1) amortized | Can degrade due to collisions/resizing |
-| remove | O(1) average | Depends on bin structure |
+| Map | Key ordering | Null support | Typical use |
+|---|---|---|---|
+| HashMap | No guarantee | One null key; null values | General lookup |
+| LinkedHashMap | Insertion or access order | Allows null | Predictable iteration, LRU building block |
+| TreeMap | Sorted | Null key generally not allowed with natural ordering | Range/sorted-key operations |
+| ConcurrentHashMap | No order guarantee | No null keys/values | Concurrent per-key operations |
+| Hashtable | No order guarantee | No null keys/values | Legacy synchronized map |
 
-These are expected complexity descriptions, not hard real-time guarantees.
+## 12. Thread safety
 
-## 9. Important behavior
+HashMap is not synchronized. Concurrent reads are safe only when the map is safely published and not concurrently modified; concurrent writes or read/write races require coordination.
 
-- One null key is supported.
-- Multiple null values are supported.
-- No iteration-order guarantee.
-- Not synchronized; concurrent structural modification is unsafe.
-- Iterators are fail-fast on a best-effort basis, not a thread-safety mechanism.
-- Use ConcurrentHashMap for concurrent access when its semantics fit.
+Use ConcurrentHashMap for concurrent key-value access when its semantics fit. It provides atomic per-key operations, not a transaction across arbitrary multiple keys.
 
-## 10. Practical example
+## 13. Common interview traps
 
-```java
-Map<String, Integer> counts = new HashMap<>();
-counts.merge("java", 1, Integer::sum);
-counts.merge("java", 1, Integer::sum);
-counts.merge("spring", 1, Integer::sum);
-System.out.println(counts); // values: java=2, spring=1
-```
+- Capacity is not the same as size.
+- HashMap does not preserve insertion order.
+- Same hash does not mean same key.
+- `equals()` alone is not enough; `hashCode()` must agree.
+- A null get result may mean absent or mapped-to-null.
+- Fail-fast iterators are not a thread-safety mechanism.
+- Treeification thresholds are JDK implementation details.
+- A thread-safe map does not make its mutable values thread-safe.
 
-`merge` is useful for counters because it inserts the first value and combines later values.
+## 14. Interview questions
 
-## 11. Interview questions and answers
+**Q1. Explain HashMap put and get.**  
+Hash the key, select a bucket, then compare entries in that bin using hash and equals. Put replaces an existing equal key or adds a node; get returns its value.
 
-**Q1. How does HashMap work internally?**  
-It hashes the key, maps the hash to a bucket, then checks entries in that bucket using hash and equals. Collisions are stored in a bin, which may become a tree in modern implementations.
-
-**Q2. Why override hashCode when overriding equals?**  
-Equal keys must reach the same bucket. Otherwise a map may not compare them and a lookup using an equal key can fail.
+**Q2. Why is capacity a power of two?**  
+It allows efficient bucket indexing with a bit mask and supports the implementation's resize strategy.
 
 **Q3. What is the load factor?**  
-It controls the occupancy threshold that triggers resizing. A lower value uses more memory but can reduce collisions; a higher value saves table space but may increase collisions.
+It determines the threshold at which the table resizes. Lower load can reduce collisions but uses more memory.
 
-**Q4. What happens when two keys have the same hash?**  
-They collide. HashMap stores both in the same bucket and distinguishes them using equality.
+**Q4. What happens on collision?**  
+Entries share a bucket in a linked bin or, for suitable large bins in modern OpenJDK, a red-black tree.
 
-**Q5. Is HashMap thread-safe?**  
-No. Use ConcurrentHashMap for concurrent access, or external synchronization if a whole-map atomic operation is required.
+**Q5. Why are mutable keys dangerous?**  
+Changing a hash/equality field after insertion can make the entry unreachable through normal lookup.
 
-**Q6. Why is a mutable key dangerous?**  
-Changing a field used by hashCode can change the bucket calculation after insertion. The entry may remain in its old bucket and become difficult to retrieve.
+**Q6. What is the difference between size and capacity?**  
+Size counts mappings; capacity counts buckets.
 
-**Q7. Does HashMap preserve insertion order?**  
-No. Use LinkedHashMap when insertion/access order matters, or TreeMap for sorted key order.
+**Q7. Is HashMap thread-safe?**  
+No. Use ConcurrentHashMap or external synchronization for concurrent updates.
 
-**Q8. What is the difference between capacity and size?**  
-Capacity is the bucket-array length; size is the number of mappings currently stored.
+**Q8. Why can get() return null for a present key?**  
+HashMap allows null values. Use containsKey to distinguish a present null mapping from an absent key.
 
-## 12. Coding exercises
+## 15. Practice exercises
 
-1. Count word frequencies with `merge`.
-2. Group employees by department using `computeIfAbsent`.
-3. Use a custom immutable key with two fields and verify lookup using a separate equal instance.
-4. Find the first non-repeating character using a LinkedHashMap.
+1. Count word frequencies with merge.
+2. Group employees by department with computeIfAbsent.
+3. Use a two-field immutable key and retrieve a value using a separately created equal key.
+4. Show the failure caused by mutating a key after insertion.
+5. Compare HashMap and LinkedHashMap iteration order.
+6. Explain how resize changes bucket positions when capacity doubles.
 
-## 13. Quick revision
+## 16. Quick revision
 
-HashMap = bucket array + collision bins. hashCode selects the bucket; equals identifies the key. Average get/put is O(1), resizing happens beyond threshold, and HashMap is not thread-safe.
+HashMap = bucket array + collision bins. hashCode selects a bucket; equals identifies a key. Expected get/put is O(1). Capacity, size and threshold are different. HashMap allows null, does not preserve order, and is not thread-safe.
