@@ -100,6 +100,7 @@ nav:
           - Atomics, Deadlocks & Thread Safety: topics/concurrency-jvm/atomic-deadlocks-thread-safety.md
           - Virtual Threads: topics/concurrency-jvm/virtual-threads.md
           - JVM Memory & GC: topics/concurrency-jvm/jvm-memory-gc.md
+          - Concurrency Interview Checklist: topics/concurrency-jvm/interview-checklist.md
       - Spring & Spring Boot:
           - Overview: topics/spring-boot.md
           - IoC, DI & Beans: topics/spring/spring-ioc-di-beans.md
