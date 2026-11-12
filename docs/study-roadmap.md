@@ -41,17 +41,23 @@ Use this as a checklist. Mark a topic complete only when you can explain it, wri
 - Java 8/9/16 API version differences
 
 ## 4. Concurrency and JVM
-- Process vs thread and thread lifecycle
-- Runnable vs Callable
-- synchronized, volatile, and atomic classes
-- Locks, race conditions, deadlocks, and starvation
-- ExecutorService and thread pools
-- CompletableFuture
-- Concurrent collections
-- Java Memory Model and happens-before
-- Platform threads vs virtual threads
-- Heap, stack, metaspace, and garbage collection
-- Memory leaks and OutOfMemoryError
+- Process vs thread, thread lifecycle, interruption and cancellation
+- Runnable vs Callable; execute vs submit
+- Race conditions, atomicity, visibility, ordering and happens-before
+- synchronized, volatile, intrinsic monitors and reentrancy
+- ReentrantLock, ReadWriteLock, StampedLock and Condition
+- wait/notify/notifyAll and coordination utilities
+- AtomicInteger/AtomicLong/AtomicReference, CAS, ABA and LongAdder
+- Deadlock, starvation, livelock and consistent lock ordering
+- ExecutorService, ThreadPoolExecutor, bounded queues and rejection policies
+- Future, CompletableFuture, thenApply, thenCompose, thenCombine and allOf
+- Async exception handling, timeouts and cancellation
+- Concurrent collections and producer-consumer patterns
+- Platform threads vs Java 21 virtual threads, carriers and pinning
+- CPU-bound vs I/O-bound workloads and resource limits
+- Heap, stack, PC register, native stack, metaspace and code cache
+- GC roots, reachability, generations, stop-the-world and common collectors
+- Memory leaks, OOME, StackOverflowError, heap dumps, thread dumps and GC logs
 
 ## 5. SQL and Databases
 - Joins, subqueries, CTEs, and window functions
