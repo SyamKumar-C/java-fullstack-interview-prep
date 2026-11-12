@@ -111,6 +111,79 @@ Use this checklist to verify understanding, not to count pages. A topic is compl
 - [ ] Unmodifiable view versus snapshot; shallow versus deep immutability
 - [ ] Choose an implementation for a scenario and justify complexity, order, null and thread-safety
 
+# Streams and Functional Programming Coverage
+
+Use this checklist to test whether you can explain and apply the Java 8+ functional APIs, not just recognize their names.
+
+## Functional interfaces and lambdas
+- [ ] Functional interface / SAM rule; default and static methods
+- [ ] Predicate, Function, Consumer, Supplier, UnaryOperator and BinaryOperator
+- [ ] BiPredicate, BiFunction, BiConsumer and primitive specializations
+- [ ] Lambda syntax, target typing and type inference
+- [ ] Static, bound-instance, unbound-instance and constructor method references
+- [ ] Effectively final local-variable capture
+- [ ] Lambda versus anonymous-class `this`
+- [ ] Predicate, Function and Consumer composition
+
+## Stream API
+- [ ] Stream source, intermediate operations and terminal operation
+- [ ] Creating streams from collections, arrays, values, iterate and generate
+- [ ] IntStream, LongStream, DoubleStream and boxing/unboxing
+- [ ] filter, map, flatMap, distinct, sorted, peek, limit and skip
+- [ ] Java 9 takeWhile and dropWhile
+- [ ] Lazy evaluation and pipeline execution
+- [ ] Short-circuiting: findFirst, findAny, anyMatch, allMatch, noneMatch
+- [ ] Empty-stream behavior of matching operations
+- [ ] map versus flatMap
+- [ ] reduce versus collect
+- [ ] Encounter order, forEach versus forEachOrdered
+- [ ] Stream reuse, source interference and side effects
+- [ ] Stream.toList() unmodifiable result (Java 16+) versus mutable collection needs
+
+## Collectors and coding patterns
+- [ ] toList, toSet, toCollection and joining
+- [ ] groupingBy with counting, summingInt, averagingInt and mapping
+- [ ] summarizingInt and nested groupingBy
+- [ ] partitioningBy with and without downstream collectors
+- [ ] groupingBy versus partitioningBy
+- [ ] toMap and duplicate-key merge functions
+- [ ] collectingAndThen and reducing
+- [ ] Associativity and identity requirements for reductions
+- [ ] Duplicate counts, second-highest distinct value and frequency maps
+- [ ] Grouping employees and aggregating orders by customer
+
+## Optional
+- [ ] of, ofNullable and empty
+- [ ] isPresent, isEmpty, ifPresent and ifPresentOrElse
+- [ ] orElse versus orElseGet eager/lazy behavior
+- [ ] orElseThrow with custom exception
+- [ ] map, flatMap and filter
+- [ ] Optional.stream and flattening Stream<Optional<T>>
+- [ ] Return type design and when not to use Optional
+
+## Parallel streams
+- [ ] Spliterator splitting, task processing and result combination
+- [ ] ForkJoinPool.commonPool behavior
+- [ ] CPU-bound versus blocking I/O workloads
+- [ ] Shared mutable state and thread safety
+- [ ] Ordering and forEachOrdered
+- [ ] Associative reductions
+- [ ] Benchmarking with warm-up and realistic load
+
+## Version awareness
+- [ ] Java 8: streams, lambdas, functional interfaces, Optional basics
+- [ ] Java 9: Optional.stream/ifPresentOrElse and takeWhile/dropWhile
+- [ ] Java 16: Stream.toList()
+
+A topic is ready only when you can explain the behavior, write a small example, predict edge cases, and justify the trade-off in a real project.
+
+## Related lessons
+- [Functional interfaces and lambdas](functional-interfaces-lambdas.md)
+- [Streams, sources and pipeline execution](../streams-functional/stream-lifecycle.md)
+- [Collectors and reductions](../streams-functional/collectors-grouping-reducing.md)
+- [Optional](../streams-functional/optional.md)
+- [Parallel streams](../streams-functional/parallel-streams.md)
+
 ## Interview readiness
 
 - [ ] Explain each concept in a 30–60 second answer

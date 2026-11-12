@@ -27,16 +27,18 @@ Use this as a checklist. Mark a topic complete only when you can explain it, wri
 - Immutable vs unmodifiable collections
 
 ## 3. Streams and Functional Programming
-- Functional interfaces and lambda expressions
-- Stream creation and pipeline execution
-- Intermediate vs terminal operations
-- map, filter, and flatMap
-- distinct, sorted, limit, and skip
-- findFirst, findAny, anyMatch, allMatch, noneMatch
-- reduce and collect
-- groupingBy, partitioningBy, counting, and mapping collectors
-- Parallel streams and trade-offs
-- Optional and common misuse
+- Functional interfaces: Predicate, Function, Consumer, Supplier, primitive specializations
+- Lambda syntax, target typing, method references, effectively final capture and composition
+- Stream sources: Collection, arrays, Stream.of, iterate, generate and primitive streams
+- Intermediate operations: filter, map, flatMap, distinct, sorted, peek, limit, skip, takeWhile, dropWhile
+- Terminal operations: toList, collect, forEach, count, reduce, min, max, findFirst, findAny
+- Lazy evaluation, short-circuiting, encounter order and stream reuse
+- map vs flatMap; reduce vs collect
+- Collectors: groupingBy, partitioningBy, counting, mapping, summing, averaging, summarizing and joining
+- toMap duplicate-key merge functions and collectingAndThen
+- Optional: of, ofNullable, map, flatMap, filter, orElse, orElseGet and orElseThrow
+- Parallel stream splitting, common pool, ordering, associative reductions and performance trade-offs
+- Java 8/9/16 API version differences
 
 ## 4. Concurrency and JVM
 - Process vs thread and thread lifecycle
