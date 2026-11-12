@@ -1,96 +1,125 @@
-# Atomicity, Deadlocks and Thread Safety
+# Atomic Classes, Deadlocks and Thread Safety
 
-## 1. Thread safety
+## 1. What does thread-safe mean?
 
-A class is thread-safe when it behaves correctly when multiple threads access it at the same time. The key question is whether shared mutable state can be observed or changed inconsistently.
+A class is thread-safe when it behaves correctly under concurrent access, according to its contract. Thread safety is not just "using synchronized"; it is about protecting shared state and invariants.
 
-Ways to protect state include immutability, thread confinement, synchronization, locks, and atomic classes.
+Common strategies:
+- Immutability: state cannot change after construction.
+- Thread confinement: only one thread accesses the state.
+- Synchronization/locks: coordinate access.
+- Atomic variables: atomic operations on individual values.
+- Concurrent collections: use data structures designed for concurrent access.
 
-## 2. Race condition
+## 2. Race condition and lost update
 
-A race condition occurs when the result depends on the timing/interleaving of threads.
+`count++` is not one indivisible action. It is effectively read, add one, then write.
 
 ```java
 class Counter {
     private int count;
     void increment() { count++; }
+    int get() { return count; }
 }
 ```
 
-`count++` is a read-modify-write sequence, not one atomic operation. Two threads can read the same value and overwrite each other's update.
+Two threads can read the same old value and overwrite one another's update. The final result can be lower than the number of increments.
 
-Fix with synchronization:
+Protect it with a lock:
 
 ```java
-class Counter {
+class SafeCounter {
     private int count;
     synchronized void increment() { count++; }
     synchronized int get() { return count; }
 }
 ```
 
-Or use `AtomicInteger` for a simple counter.
+Or use an atomic counter when the state is just one independent number.
 
-## 3. Atomic classes and CAS
+## 3. Atomic classes and compare-and-set
 
-Classes such as AtomicInteger use compare-and-set (CAS). CAS updates a value only if it still equals an expected value. It can avoid blocking for simple state changes, but compound invariants may need a lock.
+Classes such as AtomicInteger, AtomicLong, AtomicBoolean and AtomicReference provide atomic operations. Many use compare-and-set (CAS): update the value only if it still equals the expected value.
 
 ```java
 AtomicInteger count = new AtomicInteger();
 count.incrementAndGet();
+boolean changed = count.compareAndSet(0, 10);
 ```
 
-For multiple related fields that must change together, use a lock or a single immutable state updated atomically.
+CAS avoids a traditional lock for supported operations, but repeated contention can cause retries. Atomic operations do not automatically protect relationships across multiple variables.
 
-## 4. Deadlock
+## 4. LongAdder vs AtomicLong
 
-Deadlock occurs when threads wait forever for locks held by each other.
+LongAdder spreads updates across internal cells under contention and combines them when `sum()` is called. It can improve throughput for highly contended statistics such as request counters. It is not a drop-in replacement when you need an immediately exact atomic value for every read or compare-and-set operation.
 
-Example: Thread 1 holds lock A and waits for B; Thread 2 holds B and waits for A.
+Use AtomicLong for atomic updates and conditional operations on one value; consider LongAdder for high-contention statistics.
+
+## 5. ABA problem
+
+With CAS, a value can change A -> B -> A. A thread that checks only "is it still A?" may miss the intermediate change. This is the ABA problem. AtomicStampedReference can pair a reference with a version stamp to detect such changes. It is mainly relevant in low-level lock-free algorithms.
+
+## 6. Deadlock
+
+Deadlock occurs when threads wait forever for resources held by one another.
+
+Example:
+- Thread 1 holds lock A and waits for lock B.
+- Thread 2 holds lock B and waits for lock A.
 
 Prevention:
-- Acquire locks in a consistent global order.
-- Keep critical sections short.
-- Avoid calling unknown/external code while holding locks.
-- Use timed `tryLock` when suitable.
-- Reduce the number of nested locks.
+1. Acquire multiple locks in one consistent global order.
+2. Keep critical sections short.
+3. Avoid calling unknown callbacks or external services while holding locks.
+4. Use timed tryLock where suitable.
+5. Reduce nested locking and shared mutable state.
 
-## 5. Liveness problems
+## 7. Other liveness problems
 
-- Deadlock: no involved thread can proceed.
-- Starvation: a thread repeatedly fails to get CPU/lock access.
-- Livelock: threads keep reacting to each other but make no progress.
+- **Deadlock:** involved threads cannot proceed because of circular waiting.
+- **Starvation:** a thread repeatedly fails to obtain CPU time or a needed resource.
+- **Livelock:** threads remain active and react to one another but make no useful progress.
 
-## 6. Java Memory Model and visibility
+## 8. Java Memory Model and visibility
 
-A thread may not immediately observe another thread's write without a happens-before relationship. `volatile` provides visibility and ordering guarantees for reads/writes of that variable, but does not make compound operations such as `count++` atomic.
+A thread may not observe another thread's write unless there is a happens-before relationship. Important mechanisms include synchronized, volatile, Thread.start/join and concurrency utilities.
 
-Synchronization, volatile, thread start/join and concurrency utilities establish relevant happens-before relationships.
+A volatile variable provides visibility/order for that variable; it does not make compound updates atomic. An AtomicInteger provides atomic operations on its value. A lock can protect a multi-field invariant.
 
-## 7. Practical scenario
+## 9. Local locks vs distributed coordination
 
-A shared in-memory inventory counter is updated by many request threads. A plain int can lose updates. Use AtomicInteger if only one number changes independently; use a database transaction/locking strategy if stock updates must remain consistent across application instances.
+A Java lock protects threads within one JVM. If an application runs on five server instances, each instance has its own lock. It does not coordinate updates across all five.
 
-## 8. Common mistakes
+For shared database state, use database transactions, constraints and suitable optimistic/pessimistic locking. For distributed coordination, choose a design appropriate to the failure model; do not assume a local synchronized block protects a cluster.
+
+## 10. Common mistakes
 
 - Assuming volatile makes increment atomic.
-- Assuming synchronized protects data if not all accesses use the same lock.
-- Acquiring multiple locks in inconsistent orders.
-- Using atomics for a multi-field invariant.
-- Assuming an in-memory lock coordinates multiple application servers.
+- Assuming AtomicInteger can protect several related fields.
+- Using a local lock to protect shared data across multiple application instances.
+- Acquiring multiple locks in inconsistent order.
+- Using LongAdder where an exact atomic read/conditional update is required.
+- Ignoring starvation and livelock while looking only for deadlock.
 
-## 9. Interview questions
+## 11. Interview questions
 
-**Q1. What is a race condition?** A timing-dependent bug caused by concurrent access to shared state.
+**Q1. What is a race condition?** A timing-dependent bug where concurrent operations access shared state and the result depends on their interleaving.
 
-**Q2. AtomicInteger vs volatile int?** AtomicInteger supports atomic read-modify-write operations; volatile int provides visibility but not atomic increment.
+**Q2. AtomicInteger vs volatile int?** AtomicInteger supports atomic read-modify-write methods; volatile int gives visibility but increment is still multiple steps.
 
-**Q3. What causes deadlock?** Circular waiting for locks, with each thread holding a resource another needs.
+**Q3. What is CAS?** Compare-and-set updates a value only if it still matches an expected value.
 
-**Q4. How do you prevent deadlock?** Consistent lock ordering, short critical sections and avoiding nested locks where possible.
+**Q4. What is the ABA problem?** A value changes away from A and later back to A, so a CAS check sees A but misses the intermediate change.
 
-**Q5. What is starvation?** A thread cannot get enough access to a resource to make progress.
+**Q5. AtomicLong vs LongAdder?** AtomicLong provides atomic operations on one value; LongAdder can scale high-contention statistics but its sum is not an atomic snapshot for conditional updates.
 
-## 10. Practice
+**Q6. Does synchronized protect data across multiple Spring Boot instances?** No. It only coordinates threads using that lock in the same JVM.
 
-Create two threads that increment a shared counter 100,000 times. Compare plain int, synchronized and AtomicInteger. Then create a two-lock deadlock and fix it by ordering lock acquisition.
+**Q7. Deadlock vs starvation vs livelock?** Deadlock is circular waiting; starvation is lack of resource access; livelock is activity without progress.
+
+## 12. Practice
+
+1. Increment a counter from multiple threads using plain int, synchronized, AtomicInteger and LongAdder.
+2. Demonstrate a two-lock deadlock and fix it with consistent lock ordering.
+3. Explain why AtomicInteger is not enough for a transfer that updates two account balances.
+4. Explain why synchronized in a multi-instance service does not protect a shared database row.

@@ -1,44 +1,84 @@
-# ExecutorService, Callable, Future and CompletableFuture
+# ExecutorService, Future and CompletableFuture
 
-## 1. Why executors?
+## 1. Why use executors?
 
-Creating a new Thread for every task is expensive and difficult to manage. ExecutorService separates task submission from thread management and can reuse worker threads.
+Creating a new platform Thread for every request makes thread creation, cleanup, limits and failure handling difficult. An executor separates task submission from the mechanism that runs tasks.
 
 ```java
 ExecutorService pool = Executors.newFixedThreadPool(4);
 try {
-    pool.submit(() -> System.out.println("Working"));
+    Future<Integer> result = pool.submit(() -> 10 + 20);
+    System.out.println(result.get());
 } finally {
     pool.shutdown();
 }
 ```
 
-In production, choose pool size and queue behavior based on workload. A fixed thread pool created by the convenience factory uses an unbounded queue, which can allow memory growth under overload.
+The example waits for the task with `get()`. In a real application, do not block a request thread unnecessarily; compose asynchronous work when possible.
 
 ## 2. Runnable vs Callable
 
-- Runnable: no return value; cannot declare checked exceptions in `run()`.
-- Callable<T>: returns a value and can throw checked exceptions.
+| Runnable | Callable<T> |
+|---|---|
+| `run()` returns void | `call()` returns T |
+| Cannot declare checked exceptions | Can throw checked exceptions |
+| Used with execute or submit | Usually submitted to get a Future<T> |
 
 ```java
-Callable<Integer> task = () -> 10 + 20;
-Future<Integer> future = pool.submit(task);
-Integer result = future.get();
+Runnable logTask = () -> System.out.println("Started");
+Callable<String> loadTask = () -> "loaded";
+Future<String> future = pool.submit(loadTask);
 ```
 
-## 3. Future
+## 3. ExecutorService lifecycle
 
-Future represents a result that may become available later. `get()` blocks until completion; `get(timeout, unit)` bounds the wait. It also supports cancellation and completion checks.
+- `execute(task)`: submit a Runnable without a result.
+- `submit(task)`: submit Runnable/Callable and get a Future.
+- `shutdown()`: stop accepting new tasks; finish submitted tasks.
+- `shutdownNow()`: request interruption of running tasks and return tasks that never started. It is best-effort, not a guarantee that tasks stop.
+- `awaitTermination(...)`: wait for termination for a bounded time.
 
-A Future does not provide rich composition. Calling get too early can block the current thread.
+Interruption is cooperative. Tasks should respond to interruption and restore the interrupt flag when they cannot propagate InterruptedException.
 
-## 4. CompletableFuture
+```java
+pool.shutdown();
+try {
+    if (!pool.awaitTermination(10, TimeUnit.SECONDS)) {
+        pool.shutdownNow();
+    }
+} catch (InterruptedException ex) {
+    pool.shutdownNow();
+    Thread.currentThread().interrupt();
+}
+```
 
-CompletableFuture supports asynchronous pipelines and composition.
+## 4. Thread pools and queueing
+
+A pool controls how many tasks run at once. Important choices include core size, maximum size, keep-alive time, work queue and rejection policy.
+
+Be careful with convenience factories: `Executors.newFixedThreadPool(n)` uses an unbounded queue. Under sustained overload, queued tasks can consume large amounts of memory. Production systems should choose queue capacity and rejection behavior deliberately, often using a configured ThreadPoolExecutor.
+
+Common rejection policies include AbortPolicy (throws), CallerRunsPolicy (submitting thread runs task), DiscardPolicy and DiscardOldestPolicy. Choose based on whether slowing the producer, rejecting work or dropping work is acceptable.
+
+## 5. Future
+
+Future represents a result that may be available later.
+
+- `get()` blocks until completion.
+- `get(timeout, unit)` bounds the wait.
+- `isDone()` checks completion.
+- `cancel(true)` requests cancellation and may interrupt the running task.
+- `isCancelled()` checks cancellation.
+
+A Future is useful for retrieving one result, but does not offer rich dependent-stage composition. Calling get too early can block.
+
+## 6. CompletableFuture basics
+
+CompletableFuture implements CompletionStage and supports callbacks, transformations and composition.
 
 ```java
 CompletableFuture<User> userFuture =
-    CompletableFuture.supplyAsync(() -> userService.loadUser(10), pool);
+    CompletableFuture.supplyAsync(() -> userService.loadUser(10), ioExecutor);
 
 CompletableFuture<String> nameFuture =
     userFuture.thenApply(User::getName);
@@ -46,59 +86,110 @@ CompletableFuture<String> nameFuture =
 String name = nameFuture.join();
 ```
 
-Important methods:
-- `thenApply`: transform a result synchronously in the completion chain.
-- `thenApplyAsync`: transform asynchronously using an executor/default async facility.
-- `thenCompose`: chain a function that returns another CompletionStage; avoids nested futures.
-- `thenCombine`: combine two independent results.
-- `allOf`: wait for several futures.
-- `exceptionally`, `handle`, `whenComplete`: different error/observation handling.
+- `runAsync(Runnable)`: async work with no result.
+- `supplyAsync(Supplier)`: async work that returns a result.
+- Without an explicit executor, async methods commonly use the common ForkJoinPool.
+- Non-async continuation methods may run on the thread that completes the previous stage or another thread participating in completion. Do not assume a particular thread.
 
-## 5. thenApply vs thenCompose
+Pass a suitable executor for blocking I/O work rather than using the common pool blindly.
 
-If a function returns a plain value, use thenApply. If it returns another future, use thenCompose to flatten the result.
+## 7. thenApply vs thenCompose vs thenCombine
+
+`thenApply` transforms a value. `thenCompose` chains a function that itself returns a future, avoiding nested futures. `thenCombine` combines two independent future results.
+
+```java
+CompletableFuture<User> user = loadUserAsync(10);
+
+CompletableFuture<List<Order>> orders =
+    user.thenCompose(u -> loadOrdersAsync(u.getId()));
+
+CompletableFuture<Dashboard> dashboard =
+    user.thenCombine(loadNotificationsAsync(10),
+        (u, notifications) -> new Dashboard(u, notifications));
+```
+
+## 8. allOf and collecting results
+
+`allOf` completes when all supplied futures complete. It returns CompletableFuture<Void>; it does not automatically give you a list of their results.
 
 ```java
 CompletableFuture<User> user = loadUserAsync(1);
-CompletableFuture<List<Order>> orders =
-    user.thenCompose(u -> loadOrdersAsync(u.getId()));
+CompletableFuture<List<Order>> orders = loadOrdersAsync(1);
+
+CompletableFuture<Void> all =
+    CompletableFuture.allOf(user, orders);
+
+CompletableFuture<Dashboard> dashboard =
+    all.thenApply(ignored ->
+        new Dashboard(user.join(), orders.join()));
 ```
 
-## 6. Error handling
+If one future fails, the combined stage also completes exceptionally. Decide whether all results are required or whether partial results are acceptable.
 
-`exceptionally` can recover with a fallback value. `handle` receives either result or error and can transform either. `whenComplete` observes completion but normally preserves the original result/failure.
+## 9. Exception handling
 
-Do not silently convert every failure into an empty result if the caller needs to know the operation failed.
+- `exceptionally(fn)`: recover from an exception with a fallback result.
+- `handle((value, error) -> ...)`: transform success or failure into a result.
+- `whenComplete((value, error) -> ...)`: observe completion; normally preserves the original outcome.
 
-## 7. Executor choice
+```java
+CompletableFuture<User> safeUser =
+    loadUserAsync(1)
+        .exceptionally(error -> fallbackUser());
+```
 
-CPU-bound tasks need a pool sized around available processors. Blocking I/O tasks may need more concurrency, a dedicated pool or virtual threads, depending on the application. Avoid using the common ForkJoinPool blindly for blocking work.
+Do not silently turn every error into an empty or default value if the caller must know the operation failed. Log useful context and preserve the cause.
 
-## 8. Practical scenario
+## 10. Timeout and cancellation
 
-A dashboard loads profile, notifications and order summary independently. Start all three calls, combine their results, and apply a timeout/fallback policy to each call. This reduces sequential waiting, but the downstream services still need capacity controls.
+Use `orTimeout` to complete a future exceptionally after a time limit, or `completeOnTimeout` to complete it with a fallback (Java 9+). These methods do not guarantee that the underlying external operation has physically stopped. Configure timeouts in the HTTP/database client as well.
 
-## 9. Common mistakes
+Cancellation and interruption are cooperative; design tasks and clients to respond to them.
 
-- Forgetting shutdown/ownership of an ExecutorService.
-- Using an unbounded queue without overload protection.
-- Blocking with get() when composition is possible.
-- Using thenApply where thenCompose is required.
-- Ignoring exceptions inside asynchronous stages.
-- Running blocking tasks on a shared CPU-oriented pool.
+## 11. Choosing a concurrency model
 
-## 10. Interview questions
+- CPU-bound tasks: bounded pool sized around available processors, then measure.
+- Blocking I/O: dedicated bounded executor or virtual threads, with downstream limits.
+- Independent async operations: CompletableFuture composition.
+- Producer/consumer pipelines: bounded queues and explicit back-pressure.
+- Do not create an unbounded queue or unbounded downstream concurrency by accident.
 
-**Q1. Runnable vs Callable?** Runnable has no result; Callable returns a result and can throw checked exceptions.
+## 12. Practical Spring service scenario
 
-**Q2. Future vs CompletableFuture?** Future represents a pending result; CompletableFuture also supports composition, callbacks and explicit completion.
+A dashboard needs profile, order summary and notifications. Start independent calls concurrently and combine results. Give each dependency a timeout, isolate blocking calls from CPU work, and decide what to do if one dependency fails. This can reduce total waiting time, but does not increase the capacity of the downstream services.
 
-**Q3. thenApply vs thenCompose?** thenApply maps a value; thenCompose chains another asynchronous operation and flattens the result.
+## 13. Common mistakes
 
-**Q4. What does get() do?** It blocks until the result is ready or an exception/timeout occurs.
+1. Forgetting to shut down an executor that the application owns.
+2. Assuming shutdownNow forcibly kills tasks.
+3. Using an unbounded queue without overload protection.
+4. Calling Future.get too early and blocking.
+5. Using thenApply when thenCompose is required.
+6. Assuming allOf returns the individual results.
+7. Ignoring exceptional completion.
+8. Running blocking I/O on a shared CPU-oriented pool.
+9. Assuming timeout always cancels the underlying network operation.
 
-**Q5. Why pass a custom executor?** To control thread usage and isolate workloads from shared pools.
+## 14. Interview questions
 
-## 11. Practice
+**Q1. Runnable vs Callable?** Runnable returns no result; Callable returns a value and can throw checked exceptions.
 
-Run two independent service calls with CompletableFuture, combine their results with thenCombine, and handle one failure without hiding the other result.
+**Q2. execute vs submit?** execute accepts a Runnable and returns no Future; submit returns a Future for completion/result tracking.
+
+**Q3. Future vs CompletableFuture?** Future represents a pending result; CompletableFuture also supports completion stages, composition and callbacks.
+
+**Q4. thenApply vs thenCompose?** thenApply maps a value; thenCompose chains a future-returning function and flattens the result.
+
+**Q5. What does shutdown do?** It rejects new tasks but allows submitted tasks to finish.
+
+**Q6. Why pass a custom executor?** To control resource use and isolate blocking, CPU and latency-sensitive workloads.
+
+**Q7. Does CompletableFuture make a task asynchronous automatically?** No. Async methods schedule work; a continuation may run on a completion thread. The execution method and executor matter.
+
+## 15. Practice
+
+1. Submit a Callable and read its Future with a timeout.
+2. Combine two independent service calls with thenCombine.
+3. Chain user lookup to order lookup with thenCompose.
+4. Compare exceptionally, handle and whenComplete.
+5. Build a ThreadPoolExecutor with a bounded queue and explain its rejection policy.

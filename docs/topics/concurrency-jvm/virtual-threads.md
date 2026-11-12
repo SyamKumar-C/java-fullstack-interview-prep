@@ -1,21 +1,18 @@
 # Java Virtual Threads (Java 21)
 
-## 1. The problem virtual threads solve
+## 1. Why virtual threads?
 
-A platform thread is backed by an operating-system thread. Threads are useful for concurrency, but large numbers of blocked platform threads consume memory and operating-system resources.
+Platform threads are backed by operating-system threads. They are effective, but creating and blocking very large numbers of them consumes significant resources.
 
-Virtual threads are lightweight threads managed by the Java runtime. They make a thread-per-task programming style practical for applications with many concurrent tasks that spend much of their time waiting, especially on I/O.
+Virtual threads are lightweight threads managed by the JVM. They make a thread-per-task style practical for applications with many concurrent tasks that spend much of their time waiting, especially on I/O.
 
-They improve scalability for blocking workloads; they do not make CPU work execute faster.
+They improve scalability for many blocking tasks; they do not make CPU work execute faster or create more CPU cores.
 
 ## 2. Creating virtual threads
 
-Java 21 provides several APIs:
-
 ```java
-Thread.startVirtualThread(() -> {
-    System.out.println(Thread.currentThread());
-});
+Thread.startVirtualThread(() ->
+    System.out.println(Thread.currentThread()));
 
 try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
     Future<String> result = executor.submit(() -> callRemoteService());
@@ -23,83 +20,95 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 }
 ```
 
-The executor creates a new virtual thread for each submitted task. Do not pool virtual threads just to limit their count; use a semaphore or other resource limit to protect a constrained downstream system.
+Java 21 also provides `Thread.ofVirtual()` and the virtual-thread-per-task executor. The executor is designed to create a virtual thread for each task; do not pool virtual threads just to limit their count.
 
-## 3. Platform thread versus virtual thread
+## 3. Platform vs virtual threads
 
 | Platform thread | Virtual thread |
 |---|---|
-| OS-thread-backed | Scheduled by JVM over carrier platform threads |
-| More expensive to create and block at large scale | Cheap to create in large numbers |
-| Useful for CPU work and general concurrency | Best for many mostly-blocking tasks |
-| Pooling is common | Usually one virtual thread per task |
+| Backed by an OS thread | Scheduled by JVM over carrier platform threads |
+| More costly at very high counts | Much cheaper to create in large numbers |
+| Useful for CPU work and general concurrency | Especially useful for many mostly-blocking tasks |
+| Thread pools are common | Usually one virtual thread per task |
 
-## 4. How scheduling works
+## 4. Scheduling and carrier threads
 
-A virtual thread runs on a carrier platform thread. When it performs supported blocking operations, the runtime can unmount it from the carrier so that the carrier can run another virtual thread. When the operation is ready, the virtual thread can be scheduled again.
+A virtual thread runs on a carrier platform thread while mounted. During supported blocking operations, the JVM can unmount the virtual thread so its carrier can run another virtual thread. When ready, it can be scheduled again.
 
-The application still sees a normal Thread API. The runtime manages the scheduling.
+The application still uses the familiar Thread API; the runtime manages the scheduling.
 
-## 5. Blocking I/O and CPU-bound work
+## 5. I/O-bound vs CPU-bound work
 
-Virtual threads are particularly useful for code that waits on network, database, or file I/O. If a task spends most of its time calculating, virtual threads do not create extra CPU cores. Use bounded parallelism for CPU-heavy work.
+Virtual threads are useful when tasks spend much of their time waiting for HTTP, database or other I/O. If a task spends most of its time calculating, virtual threads do not increase CPU capacity. Use bounded parallelism for CPU-heavy processing.
 
-Example: 10,000 requests waiting on downstream HTTP calls may be easier to model with virtual threads than 10,000 platform threads. But the downstream service still has a capacity limit.
+Example: many incoming requests each wait for a remote service. Virtual threads can make the code simpler and reduce the cost of blocked threads, but the remote service still has a maximum safe request rate.
 
-## 6. Pinning and synchronization
+## 6. Pinning: Java 21 detail
 
-A virtual thread can be pinned to its carrier in certain situations, preventing unmounting during a blocking operation. In Java 21, a notable case is blocking while inside a `synchronized` region or method. Native/foreign calls can also pin.
+A virtual thread can be pinned to its carrier during certain operations, preventing unmounting. In Java 21, blocking while executing inside a synchronized method or block is a notable pinning case. Native/foreign calls can also pin.
 
-Keep synchronized sections short and avoid blocking I/O while holding a monitor. JDK behavior evolves; check the target JDK's documentation and diagnostics when investigating pinning.
+Avoid slow blocking operations while holding a monitor. Keep synchronized sections short. Pinning behavior and diagnostics evolve across JDK releases, so check the exact JDK version when troubleshooting.
 
-## 7. Back-pressure and resource limits
+## 7. Virtual threads do not remove resource limits
 
-Virtual threads do not make databases, connection pools, APIs, or rate limits unlimited. If a database pool has 30 connections, thousands of virtual threads may still wait for those 30 connections.
+Virtual threads do not make database connections, HTTP connection pools, CPU, memory or downstream APIs unlimited.
 
-Use semaphores, bounded queues, connection pools, timeouts, bulkheads, and rate limits to protect external resources.
+If a connection pool has 30 connections, thousands of virtual threads may still wait for those 30 connections. Use semaphores, connection pools, timeouts, rate limits, bulkheads and bounded queues to protect scarce resources.
 
-## 8. Spring Boot scenario
+```java
+Semaphore permits = new Semaphore(20);
 
-Spring Boot applications on a supported JDK can enable virtual threads with the relevant Spring Boot configuration (for example, `spring.threads.virtual.enabled=true` in supported Boot versions). Verify the exact Spring Boot version and execution model. Not every framework task or third-party library automatically becomes virtual-thread-friendly.
+try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+    for (int i = 0; i < 1_000; i++) {
+        executor.submit(() -> {
+            permits.acquire();
+            try {
+                callDownstream();
+            } finally {
+                permits.release();
+            }
+        });
+    }
+}
+```
 
-Do not assume enabling virtual threads automatically changes every thread pool, async executor, scheduler, or reactive pipeline.
+In production, also handle InterruptedException, cancellation, request deadlines and failures.
 
-## 9. Common mistakes
+## 8. Spring Boot considerations
 
-- Using virtual threads to speed up CPU-bound calculations.
-- Creating an unbounded number of downstream database requests.
+Supported Spring Boot versions can enable virtual-thread support with configuration such as `spring.threads.virtual.enabled=true`. Verify the exact Spring Boot and JDK versions and the execution model being used.
+
+Do not assume this automatically changes every custom executor, scheduler, third-party library or reactive pipeline. Measure the actual application behavior and review resource limits.
+
+## 9. Virtual threads vs reactive programming
+
+Virtual threads allow blocking-style code with lightweight concurrency. Reactive programming models asynchronous data flows and back-pressure explicitly. They solve related but different problems and can coexist. Choose based on workload, libraries, latency needs and team understanding.
+
+## 10. Common mistakes
+
+- Using virtual threads to speed up CPU-heavy calculations.
+- Launching unlimited calls against a limited database or API.
 - Pooling virtual threads unnecessarily.
 - Blocking inside long synchronized sections.
-- Assuming every blocking library operation unmounts cleanly.
-- Ignoring timeouts, cancellation, and back-pressure.
+- Assuming every library blocking call unmounts in every JDK version.
+- Ignoring cancellation, timeouts and back-pressure.
 
-## 10. Interview questions and answers
+## 11. Interview questions
 
-**Q1. What are virtual threads?**  
-Lightweight threads managed by the JVM and scheduled over carrier platform threads. They support a simple thread-per-task style at high concurrency.
+**Q1. What are virtual threads?** Lightweight threads managed by the JVM and scheduled over carrier platform threads.
 
-**Q2. Do virtual threads make code execute faster?**  
-Not necessarily. They improve throughput and resource use for workloads with many waiting tasks. They do not add CPU capacity.
+**Q2. Do they make code faster?** Not necessarily. They improve scalability for many waiting tasks; they do not add CPU capacity.
 
-**Q3. Should we pool virtual threads?**  
-Usually no. Create one per task. Limit access to scarce resources separately.
+**Q3. Should we pool virtual threads?** Usually no. Create one per task and limit access to scarce resources separately.
 
-**Q4. What is a carrier thread?**  
-The platform thread on which a virtual thread is mounted while it executes.
+**Q4. What is a carrier thread?** The platform thread on which a virtual thread is mounted while it runs.
 
-**Q5. What is pinning?**  
-A virtual thread remains tied to its carrier during an operation that prevents unmounting, reducing scheduler flexibility.
+**Q5. What is pinning?** A virtual thread remains tied to its carrier during an operation that prevents unmounting, reducing scheduler flexibility.
 
-**Q6. Are virtual threads suitable for database-heavy services?**  
-They can simplify concurrency, but the connection pool and database remain bounded. Apply limits and timeouts so virtual threads do not overwhelm the database.
+**Q6. Are they suitable for database-heavy services?** They can simplify concurrency, but database connections and database capacity remain limited. Apply concurrency limits and timeouts.
 
-**Q7. Virtual threads versus reactive programming?**  
-Virtual threads allow blocking-style code with lightweight concurrency. Reactive programming models asynchronous streams and back-pressure explicitly. Choose based on workload, libraries, and team needs; they can coexist.
+**Q7. Virtual threads vs WebFlux?** Virtual threads support blocking-style request handling; WebFlux uses a non-blocking reactive model. The right choice depends on the full stack and workload.
 
-## 11. Practice exercise
+## 12. Practice
 
-Write a program that submits 1,000 tasks using a virtual-thread-per-task executor. Add a semaphore limiting concurrent calls to a simulated downstream service to 20. Explain why the semaphore is still needed.
-
-## 12. Quick revision
-
-Virtual threads make blocking concurrency cheaper, not CPU work faster. Protect databases and remote services with limits; avoid blocking while pinned.
+Submit 1,000 tasks using a virtual-thread-per-task executor. Use a Semaphore to limit concurrent downstream calls to 20. Explain why the semaphore remains necessary.
