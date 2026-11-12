@@ -1,11 +1,10 @@
 # Spring Boot Testing, JUnit and Mockito
 
-> Priority: P1 | Level: Intermediate | Study time: 55 minutes
-
 ## 1. Short interview answer
-Unit tests verify a small unit in isolation; integration tests verify collaboration between components and infrastructure. JUnit provides test lifecycle and assertions. Mockito creates test doubles and verifies interactions. Spring Boot test slices load only selected application layers, while SpringBootTest loads a broader context.
+Unit tests check a small unit in isolation. Integration tests check how components work together with real or representative infrastructure. JUnit provides test execution and assertions; Mockito creates test doubles. Spring Boot test slices load a focused part of the context, while `@SpringBootTest` loads a broad application context.
 
-## 2. JUnit basics
+## 2. JUnit 5 essentials
+Know `@Test`, `@BeforeEach`, `@AfterEach`, `@Nested`, `@DisplayName`, `assertThrows`, parameterized tests and lifecycle behavior. Keep each test focused on one behavior and use descriptive names.
 
 ```java
 @ExtendWith(MockitoExtension.class)
@@ -15,36 +14,41 @@ class PriceServiceTest {
 
     @Test
     void appliesDiscount() {
-        given(repository.findPrice(10L)).willReturn(new BigDecimal("100"));
+        given(repository.findPrice(10L))
+            .willReturn(new BigDecimal("100.00"));
+
         BigDecimal result = service.priceAfterDiscount(10L);
+
         assertEquals(new BigDecimal("90.00"), result);
     }
 }
 ```
 
-Use setup methods for shared fixture creation, but keep each test's behavior obvious. Parameterized tests are useful for multiple input/output cases.
-
 ## 3. Mockito essentials
-- `@Mock`: creates a mock.
+- `@Mock`: creates a mock object.
 - `@InjectMocks`: creates the class under test and injects available mocks.
-- `when(...).thenReturn(...)` or BDD `given(...).willReturn(...)`: stubs behavior.
+- `when(...).thenReturn(...)` / `given(...).willReturn(...)`: stubs behavior.
 - `verify(...)`: checks an interaction.
 - `ArgumentCaptor`: captures an argument passed to a mock.
-- `doThrow(...)`: useful for stubbing void methods.
+- `doThrow(...)`: useful for void methods.
+- Spy: wraps a real object; real methods run unless stubbed.
 
-Mock external boundaries; avoid mocking every internal class. Over-mocking makes tests mirror implementation rather than behavior.
+Mock external boundaries, not every internal method. Excessive interaction verification makes tests brittle and tied to implementation details.
 
-## 4. Spring test slices
-- `@WebMvcTest`: MVC controllers, filters/configuration relevant to the slice.
-- `@DataJpaTest`: JPA repositories and mappings.
-- `@JsonTest`: JSON serialization.
-- `@SpringBootTest`: broader/full application context.
-- `@Testcontainers`: run real dependencies such as PostgreSQL or Kafka in containers when configured.
+## 4. Test layers
 
-A slice test is faster and more focused. A full-context test checks wiring but is slower.
+| Annotation/tool | Context | Best use |
+|---|---|---|
+| MockitoExtension | No Spring context | Service/business unit tests |
+| `@WebMvcTest` | MVC slice | Controllers, binding, validation, filters |
+| `@DataJpaTest` | JPA slice | Repository queries and entity mappings |
+| `@JsonTest` | JSON slice | Serialization contracts |
+| `@SpringBootTest` | Full application context | Wiring and integration |
+| Testcontainers | Real dependency in container | Database/broker integration |
 
-## 5. Controller test example
+Use `@AutoConfigureMockMvc` with `@SpringBootTest` when you need a full context and MockMvc. Use a real HTTP server test when network/server behavior itself matters.
 
+## 5. Controller test
 ```java
 @WebMvcTest(OrderController.class)
 class OrderControllerTest {
@@ -60,40 +64,44 @@ class OrderControllerTest {
 }
 ```
 
-Use the mock-bean annotation supported by the project's Spring version. Test request validation, status, response body, and security rules where relevant.
+`@MockitoBean` is available in newer Spring Framework versions; older Boot versions commonly use `@MockBean`. Match the annotation to the project's dependency version.
 
-## 6. What to test
-- Happy path.
-- Boundary values and invalid input.
-- Authorization failures.
-- Not-found and conflict cases.
-- Dependency failures and retry behavior.
-- Transaction rollback and persistence constraints.
+## 6. What should be tested?
+- Happy path and boundary values.
+- Invalid input and validation messages.
+- Authentication and authorization failures.
+- Not found, conflict and duplicate requests.
+- Repository failures and transaction rollback.
 - Serialization compatibility for public APIs.
+- Retry/idempotency behavior where relevant.
 
-Avoid testing private methods directly. Test observable behavior through public contracts.
+Test public behavior rather than private methods. A test should fail when behavior is wrong, not merely when implementation changes.
 
-## 7. Common mistakes
-- Using only mocks and never testing SQL against a real database.
-- Using full Spring context for every unit test.
+## 7. Database tests and Testcontainers
+An embedded database is convenient but may differ from production in SQL dialect, locking, JSON support, indexes, collation and query planning. Testcontainers can start the same database engine used in production, reducing those differences. It does not remove the need to control test data, schema migrations and cleanup.
+
+## 8. Common mistakes
+- Using mocks to test the repository query itself.
+- Using only H2 for PostgreSQL-specific behavior.
+- Starting the full Spring context for every unit test.
 - Verifying every internal method call.
-- Sharing mutable test fixtures across tests.
-- Ignoring test data cleanup and execution order.
-- Assuming an H2 test proves PostgreSQL behavior.
+- Sharing mutable test data across test cases.
+- Ignoring test isolation and execution order.
+- Mocking the class under test instead of its collaborators.
 
-## 8. Interview questions
-**Q1. Unit vs integration test?** Unit tests isolate a small unit; integration tests verify collaboration with real or representative dependencies.
+## 9. Interview questions
+**Q1. Unit vs integration test?** Isolated logic versus collaboration among components/infrastructure.
 
-**Q2. Mock vs spy?** A mock is a test double with configured behavior; a spy wraps a real object and can call real methods unless stubbed.
+**Q2. Mock vs spy?** A mock supplies configured behavior; a spy wraps a real object and may execute real methods.
 
-**Q3. When use WebMvcTest?** To test MVC/controller behavior without loading the entire application.
+**Q3. When use WebMvcTest?** To test controller/MVC behavior without starting the whole application.
 
-**Q4. Why Testcontainers?** It can run the real database/broker engine for more realistic integration tests.
+**Q4. Why Testcontainers?** To exercise code against a real database/broker engine in a repeatable test environment.
 
-**Q5. Should private methods be tested directly?** Usually no; test public behavior and refactor if logic is hard to test.
+**Q5. Should private methods be tested directly?** Usually no; test their behavior through public methods.
 
-## 9. Practice
-1. Unit-test a service with success and repository failure.
-2. Test request validation using MockMvc.
-3. Test a repository against PostgreSQL in Testcontainers.
-4. Write a parameterized test for boundary inputs.
+## Practice
+1. Test a service's success, validation failure and repository exception.
+2. Test controller status codes and request validation using MockMvc.
+3. Verify a repository query against PostgreSQL with Testcontainers.
+4. Write parameterized tests for boundary values.

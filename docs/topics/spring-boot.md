@@ -15,3 +15,7 @@ Further revision: auto-configuration, starters, conditional beans, application e
 ## Testing and advanced security
 8. [Spring Boot testing, JUnit and Mockito](spring/spring-testing-mockito.md)
 9. [Spring Security filter chain, method security and OAuth resource server](spring/spring-security-advanced.md)
+
+## Interview coverage checklist
+
+Use the [Spring and Spring Boot interview checklist](spring/interview-coverage-checklist.md) to verify that you can explain each concept, write a small example and handle practical follow-up questions.

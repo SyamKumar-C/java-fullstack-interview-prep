@@ -1,154 +1,142 @@
 # Spring IoC, Dependency Injection and Beans
 
-## 1. What problem does Spring solve?
+## 1. Short interview answer
+IoC means the framework controls object creation and wiring instead of application classes creating their own dependencies. Dependency Injection is the technique Spring uses to provide those dependencies. A Spring bean is an object managed by the IoC container.
 
-A class should not need to create and manage every dependency it uses. If an OrderService creates its own PaymentClient, it becomes tightly coupled to that implementation and is harder to test or replace.
-
-Spring's IoC container creates and manages objects (beans), connects their dependencies, and controls their lifecycle.
-
-## 2. Inversion of Control (IoC)
-
-Without IoC, application code controls object creation:
+## 2. Why IoC matters
+Without DI, a service constructs its own collaborators and becomes tied to concrete implementations:
 
 ```java
 class OrderService {
-    private final PaymentClient client = new PaymentClient();
+    private final PaymentClient client = new StripePaymentClient();
 }
 ```
 
-With IoC, the container creates and supplies the dependency:
+With constructor injection, the dependency is supplied from outside:
 
 ```java
 @Service
 class OrderService {
     private final PaymentClient client;
-
-    OrderService(PaymentClient client) {
-        this.client = client;
-    }
+    OrderService(PaymentClient client) { this.client = client; }
 }
 ```
 
-Control of object creation is inverted from the service to the container.
+Now a test can pass a fake client, and production configuration can choose another implementation. This is dependency inversion in practice; DI is the mechanism, not the same concept.
 
-## 3. Dependency Injection (DI)
+## 3. What happens during application startup?
+1. Spring creates an ApplicationContext.
+2. It reads configuration classes and scans configured packages.
+3. It registers BeanDefinitions (metadata describing how to create beans).
+4. It creates eager singleton beans, resolves dependencies and applies post-processors.
+5. It publishes lifecycle events and completes context refresh.
+6. The application uses beans through the container.
 
-DI is a way to implement IoC: dependencies are provided from outside instead of being constructed inside the class.
+Not every bean is necessarily created at startup: lazy beans and prototype beans have different creation timing.
 
-Common forms:
-- Constructor injection: dependencies supplied through the constructor.
-- Setter injection: dependency supplied through a setter.
-- Field injection: dependency injected into a field.
-
-Constructor injection is generally preferred because it makes required dependencies explicit, supports immutability, and makes unit testing straightforward.
-
-## 4. What is a Spring bean?
-
-A bean is an object managed by the Spring IoC container. Beans can be registered using component scanning or configuration methods.
+## 4. Registering beans
 
 Component scanning:
 ```java
+@Component
+class TaxCalculator {}
+
 @Service
 class OrderService {}
+
+@Repository
+interface OrderRepository extends JpaRepository<Order, Long> {}
 ```
 
 Java configuration:
 ```java
 @Configuration
-class AppConfig {
+class PaymentConfiguration {
     @Bean
-    PaymentClient paymentClient() {
-        return new PaymentClient();
+    PaymentClient paymentClient(PaymentProperties properties) {
+        return new HttpPaymentClient(properties.baseUrl());
     }
 }
 ```
 
-Use `@Component` and its specializations such as `@Service`, `@Repository`, and `@Controller` for scanned classes. Use `@Bean` when you need explicit construction, often for third-party classes or custom setup.
+Use stereotypes for application classes discovered by scanning. Use `@Bean` when construction needs explicit configuration or the type comes from a third-party library.
 
-## 5. Bean naming and injection
+## 5. Constructor, setter and field injection
 
-By default, a scanned bean name is commonly the class name with its first character lowercased. Explicit names can be provided.
+| Type | Good fit | Trade-off |
+|---|---|---|
+| Constructor | Required dependencies | Clear, testable, supports final fields |
+| Setter | Optional/reconfigurable dependency | Object can exist before optional dependency is set |
+| Field | Rarely recommended | Hidden dependency; harder plain unit testing |
 
-When multiple beans implement the same interface, Spring needs a choice:
+A single constructor does not normally need `@Autowired`. Avoid field injection for required collaborators.
 
+## 6. Multiple implementations: @Primary and @Qualifier
 ```java
-@Service("upiPayment")
-class UpiPayment implements PaymentClient {}
+interface PaymentGateway { void pay(); }
 
-@Service("cardPayment")
-class CardPayment implements PaymentClient {}
+@Component("upiGateway")
+class UpiGateway implements PaymentGateway {
+    public void pay() {}
+}
+
+@Component("cardGateway")
+class CardGateway implements PaymentGateway {
+    public void pay() {}
+}
 
 @Service
 class CheckoutService {
-    CheckoutService(@Qualifier("upiPayment") PaymentClient payment) {}
+    CheckoutService(@Qualifier("upiGateway") PaymentGateway gateway) {}
 }
 ```
 
-Other options include `@Primary` to mark a preferred bean. Use qualifiers when the choice should be explicit at an injection point.
+`@Primary` marks a preferred candidate when injection is ambiguous. `@Qualifier` selects a named/qualified candidate at a particular injection point. If no unique candidate can be selected, context startup fails.
 
-## 6. Bean scopes
+## 7. Bean scopes
 
-Common scopes:
-- singleton (default): one bean instance per Spring IoC container.
-- prototype: a new instance each time the container is asked for the bean.
-- request: one instance per HTTP request in a web application.
-- session: one instance per HTTP session.
-- application: one instance per ServletContext.
+- **singleton (default):** one instance per bean definition per ApplicationContext.
+- **prototype:** a new instance each time the container resolves the bean.
+- **request/session:** one instance per HTTP request/session in a web application.
+- **application/websocket:** web-context-specific scopes.
 
-Singleton does not mean one object for the entire JVM; it is one per bean definition/container. A singleton bean should generally be stateless or thread-safe because many requests can use it concurrently.
+Singleton does not mean one instance across every JVM or server. Singleton services are shared by concurrent requests, so avoid request-specific mutable fields.
 
-## 7. Circular dependencies
+A prototype injected directly into a singleton is normally resolved once when the singleton is created. To obtain a fresh instance for each use, use `ObjectProvider<T>`, a provider, or an appropriate scoped proxy.
 
-A circular dependency occurs when A requires B and B requires A. Constructor cycles are rejected because neither object can be constructed first. Redesign the responsibilities, introduce a third collaborator, or use events where appropriate. Do not use lazy injection simply to hide a poor dependency graph.
+## 8. Circular dependencies
+If A requires B and B requires A, constructor injection cannot construct either first and Spring reports a cycle. Prefer redesigning responsibilities, extracting a third service, or publishing an application event. Lazy injection may defer creation but usually hides the design problem.
 
-## 8. Testing benefit
+## 9. BeanFactory vs ApplicationContext
+BeanFactory is the basic container contract. ApplicationContext builds on it and adds application events, internationalization, resource loading and integration with framework infrastructure. Most Spring Boot applications use an ApplicationContext.
 
-Constructor injection makes unit tests simple:
+## 10. Common interview traps
+- A bean is not automatically thread-safe because it is singleton.
+- DI and IoC are related but not synonyms: DI is one way to achieve IoC.
+- `@Component` marks a class for scanning; `@Bean` marks a factory method.
+- Prototype scope does not mean Spring automatically manages every destruction callback.
+- Constructor injection exposes dependency cycles instead of silently masking them.
 
-```java
-var service = new OrderService(fakePaymentClient);
-```
+## 11. Interview questions
+**Q1. What is IoC?** The framework/container takes control of creating and managing application objects.
 
-The test can provide a fake or mock without starting the entire Spring context.
+**Q2. What is DI?** Supplying an object's dependencies from outside rather than constructing them inside it.
 
-## 9. Common mistakes
+**Q3. Why constructor injection?** Required dependencies are explicit, fields can be final, invalid objects are harder to construct, and unit tests can instantiate the class directly.
 
-- Using field injection everywhere.
-- Treating singleton beans as automatically thread-safe.
-- Adding `@Component` to every class without considering ownership.
-- Ignoring multiple-bean ambiguity.
-- Creating circular dependencies.
-- Using application context lookups as a service locator in ordinary business code.
+**Q4. @Component vs @Bean?** Component scanning discovers annotated classes; a @Bean method explicitly returns an object to register.
 
-## 10. Interview questions and answers
+**Q5. @Primary vs @Qualifier?** Primary is a default preference; Qualifier narrows the candidate at an injection point.
 
-**Q1. What is IoC?**  
-A design principle where object creation and dependency management are handled by a container rather than by each application class.
+**Q6. Is a singleton bean thread-safe?** No. Scope defines lifecycle/instance count, not synchronization.
 
-**Q2. What is DI?**  
-A technique for implementing IoC by supplying a class's dependencies from outside.
+**Q7. How do you inject a fresh prototype into a singleton?** Use ObjectProvider or a provider to request it when needed.
 
-**Q3. Why is constructor injection preferred?**  
-It makes required dependencies explicit, supports final fields, avoids partially initialized objects, and simplifies unit testing.
+## 12. Practice
+1. Create two implementations of a payment interface and select one with `@Qualifier`.
+2. Unit-test a service by passing a fake dependency to its constructor.
+3. Demonstrate a prototype bean injected into a singleton and then use ObjectProvider to request new instances.
+4. Explain why storing the current user's ID in a singleton service field is unsafe.
 
-**Q4. Difference between @Component and @Bean?**  
-@Component marks a class for component scanning. @Bean marks a method whose returned object should be managed by Spring.
-
-**Q5. What happens if two beans match one interface?**  
-Spring needs a clear candidate. Use @Qualifier at the injection point or @Primary for a default preference.
-
-**Q6. Is a singleton bean thread-safe?**  
-No. Scope controls instance count, not thread safety. Mutable shared state must be protected or avoided.
-
-**Q7. Can Spring inject prototype into singleton?**  
-It can, but ordinary injection resolves the prototype when the singleton is created, so the singleton holds that one instance. Use a provider or scoped proxy if a fresh instance is needed per access.
-
-## 11. Practice exercises
-
-1. Create two PaymentClient implementations and inject one using @Qualifier.
-2. Write a unit test for OrderService using constructor injection and a fake client.
-3. Explain why a singleton service with a mutable request-specific field is unsafe.
-
-## 12. Quick revision
-
-IoC = container controls object creation. DI = container supplies dependencies. Prefer constructor injection. Singleton scope does not imply thread safety.
+## Quick revision
+IoC = container controls creation. DI = dependencies supplied from outside. Prefer constructor injection. Singleton is per container and is not automatically thread-safe.

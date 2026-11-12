@@ -1,24 +1,23 @@
 # Spring Security: Filter Chain, Method Security and OAuth Resource Server
 
-> Priority: P1 | Level: Intermediate | Study time: 55 minutes
-
 ## 1. Short interview answer
-Spring Security applies a chain of servlet filters to incoming requests. Authentication establishes the principal; authorization checks access. A resource server validates bearer access tokens and maps trusted claims/scopes to authorities. Method security adds checks close to business operations.
+Spring Security processes requests through a configured filter chain. Authentication establishes who the caller is; authorization decides what the caller may do. A resource server validates bearer access tokens and converts trusted claims/scopes into authorities. Method security adds checks at service method boundaries.
 
-## 2. Security filter chain
-A SecurityFilterChain defines which requests are matched and which security rules apply. Prefer explicit request matchers and least privilege.
+## 2. SecurityFilterChain
+Define explicit matchers and a least-privilege default:
 
 ```java
 @Bean
 SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
     return http
-        .csrf(csrf -> csrf.disable()) // only appropriate for a stateless bearer-token API
-        .sessionManagement(session -> session
-            .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .sessionManagement(s -> s.sessionCreationPolicy(
+            SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/actuator/health").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/orders/**")
                 .hasAuthority("SCOPE_orders.read")
+            .requestMatchers(HttpMethod.POST, "/api/orders/**")
+                .hasAuthority("SCOPE_orders.write")
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             .anyRequest().authenticated())
         .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()))
@@ -26,56 +25,95 @@ SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
 }
 ```
 
-Do not disable CSRF blindly. It is commonly disabled for stateless APIs that accept bearer tokens in the Authorization header and do not rely on ambient browser credentials. Cookie/session authentication needs CSRF protection.
+CSRF is enabled by default in common servlet security setups. Disable it only when the API's authentication design makes CSRF protection unnecessary—for example, a stateless API using bearer tokens in the Authorization header rather than browser cookies. Cookie/session authentication generally needs CSRF protection.
 
-## 3. Authentication and authorization
-Authentication creates an authenticated principal. Authorization checks whether the principal has required roles/authorities. Roles are commonly represented with a ROLE_ prefix; OAuth scopes are often represented as SCOPE_ authorities. Know the exact mapping configured by the application.
+## 3. Request security flow
+A simplified flow:
+1. Request enters the servlet filter chain.
+2. Security filters extract credentials and attempt authentication.
+3. AuthenticationManager/AuthenticationProvider validates credentials.
+4. A successful Authentication is stored in SecurityContext.
+5. Authorization filters evaluate request rules.
+6. Controller/service executes only if access is allowed.
+7. Security context is cleared/managed at request completion.
 
-## 4. Method security
+Exact filter order and components depend on the configured authentication mechanisms.
 
+## 4. Roles and authorities
+- `hasRole("ADMIN")` commonly checks for authority `ROLE_ADMIN`.
+- `hasAuthority("invoice.read")` checks the exact authority.
+- OAuth JWT scopes are commonly mapped to `SCOPE_xxx` authorities by the resource-server converter.
+
+Do not assume a role, scope and authority are interchangeable. Check the configured converter and naming convention.
+
+## 5. Method security
 ```java
 @Configuration
 @EnableMethodSecurity
-class MethodSecurityConfig {}
+class MethodSecurityConfiguration {}
 
 @Service
 class InvoiceService {
     @PreAuthorize("hasAuthority('invoice.read')")
-    public InvoiceDto getInvoice(long id) {
+    public InvoiceDto find(long id) {
         return loadInvoice(id);
     }
 }
 ```
 
-Method security protects calls through Spring's proxy. Self-invocation and non-Spring-managed objects can bypass proxy-based checks. Do not use method security as a substitute for validating object ownership and tenant boundaries.
+Method security is useful when access rules belong close to business operations. Proxy-based method security has the same self-invocation limitation as other proxy features. Also verify ownership/tenant access: permission to call `invoice.read` does not automatically mean the caller may read every invoice ID.
 
-## 5. JWT resource server
-Validate signature using trusted issuer keys, issuer, audience, expiry, and required claims. Configure issuer/audience validation. A decoded JWT is not necessarily a valid JWT. Plan for key rotation and token expiry. Do not put secrets or unnecessary personal data in token claims.
+## 6. JWT validation
+A JWT is a signed token format, not proof of trust by itself. A resource server should validate:
+- Signature using keys from a trusted issuer/JWK source.
+- Issuer (`iss`).
+- Expiry and not-before time where applicable.
+- Audience (`aud`) for the intended API.
+- Required scopes/claims and application-specific constraints.
 
-## 6. CORS and CSRF
-CORS is a browser policy controlling cross-origin script access; it is not authentication. CSRF exploits automatically attached credentials such as cookies. Configure exact trusted origins, methods, and headers; avoid wildcard origins with credentials.
+Plan for key rotation and clock skew. Do not put secrets in token claims. Avoid trusting a token merely because it can be Base64-decoded.
 
-## 7. Common mistakes
+## 7. OAuth 2.0 roles
+- Authorization server: issues access tokens.
+- Resource server: accepts and validates access tokens.
+- Client: obtains tokens and calls protected resources.
+- Access token: credential presented to an API.
+- Refresh token: used with the authorization server to obtain new tokens; it is not normally sent to resource APIs.
+
+OAuth 2.0 is an authorization framework. OpenID Connect adds an identity layer for user authentication.
+
+## 8. CORS and CSRF
+CORS controls whether browser JavaScript from one origin may access a response from another origin. It is not authentication and does not stop non-browser clients.
+
+CSRF abuses credentials that browsers attach automatically, commonly cookies. Configure exact trusted origins, methods and headers. Do not combine wildcard origins with credentialed requests.
+
+## 9. Multi-tenant security
+Never trust a tenant ID from a request header merely because it is present. Derive or validate the tenant against the authenticated principal and enforce ownership at the service/data-access layer. Include tenant identity in cache keys and audit records where relevant.
+
+## 10. Common mistakes
 - Disabling CSRF for a cookie-authenticated application.
-- Treating CORS as an API security control.
-- Checking a role in Angular but not in backend.
+- Treating CORS as an authentication mechanism.
+- Enforcing permissions only in Angular.
 - Validating JWT signature but ignoring issuer/audience.
-- Confusing ROLE_ADMIN and SCOPE_admin.
-- Trusting tenant ID supplied by client without checking principal permissions.
+- Confusing `ROLE_ADMIN` and `SCOPE_admin`.
+- Trusting client-supplied tenant IDs.
+- Checking a general scope but not resource ownership.
 
-## 8. Interview questions
-**Q1. What is SecurityFilterChain?** A configured chain of security filters applied to matching requests.
+## 11. Interview questions
+**Q1. Authentication vs authorization?** Authentication verifies identity; authorization checks permissions.
 
-**Q2. Authentication vs authorization?** Identity verification vs permission checking.
+**Q2. What is SecurityFilterChain?** A configured sequence of security filters applied to matching requests.
 
-**Q3. Why is CSRF often disabled for stateless bearer APIs?** The browser does not automatically attach a bearer token stored outside cookies in the same way it attaches cookies; this assumption must match the actual token storage/design.
+**Q3. What is a resource server?** An API that validates access tokens and authorizes requests based on trusted token information.
 
-**Q4. What is method security?** Authorization checks on method invocation, commonly using annotations such as PreAuthorize.
+**Q4. Why use method security?** It protects business operations even when called from different controllers or entry points.
 
-**Q5. Is CORS authentication?** No. It is a browser cross-origin access policy.
+**Q5. Is CORS security/authentication?** It is a browser cross-origin access policy, not identity verification.
 
-## 9. Practice
-1. Protect GET and POST order endpoints with different scopes.
-2. Add a method-level authorization rule.
-3. Explain CSRF choices for cookie sessions versus bearer-token APIs.
-4. Validate tenant ownership in a service method.
+**Q6. Why validate audience?** To ensure a valid token was issued for this API, not merely for some other recipient.
+
+## Practice
+1. Protect read and write endpoints with different scopes.
+2. Add a method-level rule and test denied access.
+3. Explain CSRF settings for cookie sessions versus bearer-token APIs.
+4. Validate tenant ownership before returning an order.

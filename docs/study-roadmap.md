@@ -71,17 +71,24 @@ Use this as a checklist. Mark a topic complete only when you can explain it, wri
 - Pagination strategies
 
 ## 6. Spring and Spring Boot
-- IoC and dependency injection
-- Bean lifecycle and scopes
-- Component scanning and configuration
-- Auto-configuration and starters
-- Profiles and externalized configuration
-- REST controllers and request mapping
-- Validation and exception handling
-- Filters, interceptors, and AOP
-- Transactions and propagation
-- Async and scheduled execution
-- Actuator, logging, and health checks
+- IoC vs DI, constructor injection, bean definitions and ApplicationContext
+- Bean registration: stereotypes, @Bean, component scanning, Primary and Qualifier
+- Bean scopes: singleton, prototype, request/session; thread safety and circular dependencies
+- Bean lifecycle callbacks, BeanFactoryPostProcessor and BeanPostProcessor
+- Spring AOP: advice, pointcuts, JDK/CGLIB proxies and self-invocation
+- Spring Boot startup, @SpringBootApplication and auto-configuration conditions
+- Starters, conditional beans, condition evaluation report and custom auto-configuration
+- Profiles, property precedence, ConfigurationProperties, validation and secrets
+- REST controllers, request mapping, filters vs interceptors
+- Bean Validation, ControllerAdvice and consistent error responses
+- Transactions: rollback rules, propagation, isolation, readOnly, proxy limitations
+- Async: @Async, bounded executors, CompletableFuture and context propagation
+- Scheduling: cron/time zones, fixed rate/delay and multi-replica coordination
+- Caching: Cacheable/Put/Evict, keys, tenant isolation, TTL and invalidation
+- Actuator: health/readiness, metrics and secure endpoint exposure
+- Spring Security: filter chain, authentication/authorization, roles/scopes, JWT, OAuth/OIDC, CSRF/CORS
+- Testing: JUnit, Mockito, MockMvc, test slices, SpringBootTest and Testcontainers
+- Review the [Spring interview coverage checklist](topics/spring/interview-coverage-checklist.md)
 
 ## 7. Persistence and APIs
 - JPA entities and relationships

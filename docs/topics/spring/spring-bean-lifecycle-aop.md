@@ -1,81 +1,115 @@
 # Spring Bean Lifecycle and AOP
 
-## 1. Bean lifecycle overview
-
-A Spring bean is created and managed by the IoC container. A simplified lifecycle is:
-
-1. Instantiate the bean.
-2. Inject dependencies and populate properties.
-3. Run aware callbacks where applicable.
+## 1. Lifecycle at a glance
+A simplified singleton lifecycle is:
+1. Instantiate the object.
+2. Populate dependencies and properties.
+3. Invoke aware callbacks (where implemented).
 4. Run BeanPostProcessor before-initialization callbacks.
-5. Run initialization callbacks such as @PostConstruct, InitializingBean.afterPropertiesSet or a custom init method.
-6. Run BeanPostProcessor after-initialization callbacks; this is where proxy wrapping may occur.
-7. Bean is ready for use.
-8. On context shutdown, run destruction callbacks such as @PreDestroy, DisposableBean.destroy or a custom destroy method.
+5. Run initialization callbacks such as `@PostConstruct`, `InitializingBean.afterPropertiesSet()`, or a configured init method.
+6. Run BeanPostProcessor after-initialization callbacks; infrastructure may return a proxy instead of the raw bean.
+7. Bean is ready for application use.
+8. On context shutdown, run destruction callbacks such as `@PreDestroy`, `DisposableBean.destroy()`, or a configured destroy method.
 
-Exact details vary by bean type and container setup. Prototype-scoped beans are not fully managed for destruction in the same way as singleton beans.
+This is a useful interview-level sequence, not every internal callback in exact implementation order. Prototype beans are created and initialized by Spring, but their destruction is generally the caller's responsibility.
 
-## 2. Bean scopes
+## 2. Lifecycle callback example
+```java
+@Component
+class CacheWarmup {
+    @PostConstruct
+    void warm() {
+        // dependencies have been injected
+    }
 
-- singleton: one instance per bean definition per Spring IoC container; default.
-- prototype: new instance each time requested from the container.
-- request/session: web scopes tied to an HTTP request/session.
-- application/websocket: web-specific scopes.
+    @PreDestroy
+    void close() {
+        // release owned resources
+    }
+}
+```
 
-Singleton does not mean one instance across the whole JVM or across application servers.
+Use lifecycle callbacks for initialization/cleanup, not for long-running business workflows. Be careful when calling other beans during early startup.
 
-## 3. BeanPostProcessor
+## 3. BeanFactoryPostProcessor vs BeanPostProcessor
+- **BeanFactoryPostProcessor:** works with bean-definition metadata before ordinary beans are instantiated; can change definitions.
+- **BeanPostProcessor:** works with bean instances before/after initialization; can wrap a bean with a proxy.
 
-A BeanPostProcessor can inspect or wrap beans before/after initialization. Framework features such as proxies rely on post-processing infrastructure.
+Configuration class processing and many annotation-driven features rely on this extension infrastructure.
 
-## 4. AOP
+## 4. AOP: why it exists
+Aspect-Oriented Programming separates cross-cutting behavior—transactions, authorization, logging, metrics—from core business logic.
 
-Aspect-oriented programming separates cross-cutting concerns such as transactions, logging, metrics and security from business methods.
+| Term | Meaning |
+|---|---|
+| Aspect | Module holding cross-cutting behavior |
+| Advice | Action executed at a selected point |
+| Join point | A point where advice can run |
+| Pointcut | Rule selecting join points |
+| Target | Original object |
+| Proxy | Object through which advised calls pass |
 
-Key terms:
-- Aspect: module for a cross-cutting concern.
-- Advice: code executed at a selected point.
-- Join point: execution point; in Spring proxy AOP this is typically method execution.
-- Pointcut: expression selecting join points.
-- Target: object being advised.
-- Proxy: wrapper through which advice is applied.
+Spring's proxy-based AOP mainly advises method executions on Spring-managed beans.
 
 ## 5. Advice types
+- `@Before`: before target method.
+- `@AfterReturning`: after normal return.
+- `@AfterThrowing`: when an exception escapes.
+- `@After`: after completion, whether success or failure.
+- `@Around`: wraps the call and controls whether the target proceeds.
 
-- Before: runs before the method.
-- After returning: runs after normal return.
-- After throwing: runs when an exception escapes.
-- After: runs after completion, success or failure.
-- Around: controls whether/when the target method proceeds.
+Around advice must normally call `ProceedingJoinPoint.proceed()`; forgetting it can prevent the target method from running.
 
-## 6. Proxy limitations
+## 6. JDK dynamic proxy vs CGLIB
+- JDK proxy implements interfaces exposed by the target.
+- CGLIB creates a subclass proxy when class-based proxying is used.
+- A class-based proxy cannot subclass a final class; final methods cannot be overridden.
+- Private methods are not ordinary overridable proxy join points.
 
-Spring AOP commonly uses JDK dynamic proxies for interfaces or CGLIB subclass proxies. Calls must pass through the proxy. Self-invocation such as this.otherMethod() bypasses proxy advice. Private/final methods also have limitations with subclass-based proxies.
+The exact proxy choice can depend on Spring configuration and framework version.
 
-## 7. Practical scenario
+## 7. The self-invocation problem
+```java
+@Service
+class InvoiceService {
+    public void generate() {
+        save(); // direct this.save(): does not pass through proxy
+    }
 
-@Transactional is implemented using transaction advice. A call from another Spring bean passes through the proxy; a self-call inside the same object usually does not.
+    @Transactional
+    public void save() { /* database work */ }
+}
+```
 
-## 8. Common mistakes
+The external caller enters through the proxy, but the internal call uses the target object's `this` reference. The proxy advice is bypassed. Move the advised method to another bean or redesign the boundary. AspectJ weaving is a different approach.
 
-- Assuming singleton means one instance across all containers.
-- Expecting prototype destruction callbacks to be fully automatic.
-- Expecting self-invocation to trigger AOP.
-- Putting important business logic only in advice.
-- Using broad pointcuts that intercept unintended methods.
+This limitation can affect `@Transactional`, `@Async`, `@Cacheable`, and method-security annotations.
 
-## 9. Interview questions
+## 8. Practical examples
+- Transaction advice opens/joins a transaction before the target method and commits/rolls back afterward.
+- Method security checks authorization before the method executes.
+- Cache advice checks the cache and may skip the target method on a hit.
+- Async advice submits work to an executor.
 
-**Q1. What are the main bean lifecycle stages?** Instantiation, dependency injection, aware callbacks, post-processing, initialization, use and destruction.
+## 9. Common mistakes
+- Assuming every annotated method is advised regardless of how it is called.
+- Treating lifecycle callback order as a license to call complex business logic during startup.
+- Expecting Spring to call prototype destruction callbacks automatically.
+- Assuming AOP proxying intercepts private or final methods.
+- Using broad pointcuts that unintentionally advise unrelated methods.
 
-**Q2. What is BeanPostProcessor?** An extension point that can modify or wrap bean instances around initialization.
+## 10. Interview questions
+**Q1. What is the bean lifecycle?** Creation, dependency population, aware callbacks, post-processing, initialization, use and destruction.
 
-**Q3. What is AOP used for?** Cross-cutting behavior such as transactions, security and logging.
+**Q2. BeanFactoryPostProcessor vs BeanPostProcessor?** The former changes bean definitions; the latter works with bean instances and can wrap them.
 
-**Q4. Why does self-invocation bypass Spring AOP?** The call uses this directly rather than passing through the Spring proxy.
+**Q3. What is AOP?** A way to apply cross-cutting behavior separately from business logic.
 
-**Q5. JDK proxy vs CGLIB?** JDK proxies implement interfaces; CGLIB creates a subclass proxy, subject to class/method limitations.
+**Q4. Why does self-invocation bypass advice?** The call is made directly on the target with `this`, not through the Spring proxy.
 
-## 10. Practice
+**Q5. JDK proxy vs CGLIB?** Interface-based proxy versus subclass-based proxy.
 
-Create a bean with constructor, @PostConstruct and @PreDestroy logging. Add a transactional method and demonstrate external proxy invocation versus self-invocation.
+## Practice
+1. Log constructor, `@PostConstruct`, `afterPropertiesSet` and `@PreDestroy`.
+2. Create an aspect that logs method entry and execution time.
+3. Demonstrate external invocation versus self-invocation for a transactional method.

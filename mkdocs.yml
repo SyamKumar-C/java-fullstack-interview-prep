@@ -110,6 +110,9 @@ nav:
           - Transactions: topics/spring/spring-transactions.md
           - Auto-Configuration & Testing: topics/spring/spring-boot-autoconfiguration-testing.md
           - Async, Scheduling, Caching & Actuator: topics/spring/spring-async-scheduling-cache-actuator.md
+          - Spring Testing & Mockito: topics/spring/spring-testing-mockito.md
+          - Spring Security Advanced: topics/spring/spring-security-advanced.md
+          - Spring Interview Coverage Checklist: topics/spring/interview-coverage-checklist.md
       - JPA & Hibernate:
           - Overview: topics/jpa-hibernate.md
           - Entity States & Mapping: topics/jpa/hibernate-entity-state-mapping.md
