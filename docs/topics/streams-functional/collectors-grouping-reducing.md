@@ -1,8 +1,8 @@
-# Java Collectors: groupingBy, partitioningBy, mapping and reducing
+# Java Collectors: collect, groupingBy, partitioningBy and reduce
 
 ## 1. What is a Collector?
 
-A Collector describes how a Stream pipeline accumulates elements into a result. The common terminal operation is `collect()`.
+A Collector describes how stream elements are accumulated into a result. The common terminal operation is `collect()`. Collectors can create Lists, Sets, Maps, counts, summaries, grouped results, or custom containers.
 
 ```java
 List<String> names = employees.stream()
@@ -10,114 +10,163 @@ List<String> names = employees.stream()
     .collect(Collectors.toList());
 ```
 
-A collector can build a List, Set, Map, summary statistics, grouped results, or a custom container.
+Common collectors: `toList`, `toSet`, `toMap`, `toCollection`, `counting`, `joining`, `mapping`, `filtering`, `flatMapping`, `groupingBy`, `partitioningBy`, `summarizingInt`, `summingInt`, `averagingInt`, `maxBy`, `minBy`, `reducing`, and `collectingAndThen`.
 
-## 2. groupingBy
+## 2. toList, toSet and joining
 
-`groupingBy` classifies elements by a key and collects each group.
+```java
+List<String> names = employees.stream()
+    .map(Employee::getName)
+    .collect(Collectors.toList());
+
+Set<String> departments = employees.stream()
+    .map(Employee::getDepartment)
+    .collect(Collectors.toSet());
+
+String csv = employees.stream()
+    .map(Employee::getName)
+    .collect(Collectors.joining(", "));
+```
+
+Use `toCollection(ArrayList::new)` when you specifically need a mutable ArrayList. Do not rely on an unspecified concrete type from `Collectors.toList()`.
+
+## 3. groupingBy: classify into multiple groups
+
+`groupingBy` applies a classifier function and collects elements with the same key.
 
 ```java
 Map<String, List<Employee>> byDepartment =
-    employees.stream().collect(Collectors.groupingBy(Employee::getDepartment));
+    employees.stream().collect(
+        Collectors.groupingBy(Employee::getDepartment));
 ```
-
-Result type: department -> employees in that department.
 
 ### Count each group
 
 ```java
-Map<String, Long> countByDepartment =
-    employees.stream().collect(Collectors.groupingBy(
-        Employee::getDepartment, Collectors.counting()));
+Map<String, Long> countByDepartment = employees.stream()
+    .collect(Collectors.groupingBy(
+        Employee::getDepartment,
+        Collectors.counting()));
 ```
 
-### Sum or average within each group
+### Sum and average
 
 ```java
-Map<String, Integer> salaryByDepartment =
-    employees.stream().collect(Collectors.groupingBy(
+Map<String, Integer> salaryTotalByDepartment = employees.stream()
+    .collect(Collectors.groupingBy(
         Employee::getDepartment,
         Collectors.summingInt(Employee::getSalary)));
 
-Map<String, Double> averageSalary =
-    employees.stream().collect(Collectors.groupingBy(
+Map<String, Double> averageSalaryByDepartment = employees.stream()
+    .collect(Collectors.groupingBy(
         Employee::getDepartment,
         Collectors.averagingInt(Employee::getSalary)));
 ```
 
-### mapping downstream collector
-
-Use `mapping` when the group should contain a transformed value rather than the original object.
+### Transform values inside each group with mapping
 
 ```java
-Map<String, Set<String>> namesByDepartment =
-    employees.stream().collect(Collectors.groupingBy(
+Map<String, Set<String>> namesByDepartment = employees.stream()
+    .collect(Collectors.groupingBy(
         Employee::getDepartment,
         Collectors.mapping(Employee::getName, Collectors.toSet())));
 ```
 
-### maxBy / minBy
+### Get summary statistics per group
 
 ```java
-Map<String, Optional<Employee>> highestPaidByDepartment =
+Map<String, IntSummaryStatistics> statsByDepartment = employees.stream()
+    .collect(Collectors.groupingBy(
+        Employee::getDepartment,
+        Collectors.summarizingInt(Employee::getSalary)));
+```
+
+The statistics provide count, sum, min, max and average.
+
+## 4. Nested grouping
+
+Use a downstream grouping collector when more than one classification level is needed.
+
+```java
+Map<String, Map<String, List<Employee>>> byDepartmentAndCity =
     employees.stream().collect(Collectors.groupingBy(
         Employee::getDepartment,
-        Collectors.maxBy(Comparator.comparingInt(Employee::getSalary))));
+        Collectors.groupingBy(Employee::getCity)));
 ```
 
-The Optional exists because a group collector's result type must represent the possibility of no maximum value in general collector composition. You can also use `collectingAndThen` when you need to transform a downstream result.
+This creates department -> city -> employees.
 
-## 3. partitioningBy
+## 5. partitioningBy: exactly two groups
 
-`partitioningBy` splits elements into exactly two groups based on a predicate: true and false.
+`partitioningBy` uses a boolean predicate and creates true and false groups.
 
 ```java
-Map<Boolean, List<Employee>> salaryGroups =
-    employees.stream().collect(Collectors.partitioningBy(
-        e -> e.getSalary() >= 100_000));
+Map<Boolean, List<Employee>> activeGroups = employees.stream()
+    .collect(Collectors.partitioningBy(Employee::isActive));
 ```
 
-Use it for binary conditions such as active/inactive or pass/fail. Use groupingBy for multiple category values.
+With a downstream collector:
 
-## 4. groupingBy versus partitioningBy
+```java
+Map<Boolean, Long> activeCounts = employees.stream()
+    .collect(Collectors.partitioningBy(
+        Employee::isActive, Collectors.counting()));
+```
+
+Use partitioning for pass/fail, active/inactive, or above/below threshold. Use groupingBy for departments, cities, status names, or any number of categories.
+
+## 6. groupingBy vs partitioningBy
 
 | groupingBy | partitioningBy |
 |---|---|
-| Uses a classifier function | Uses a boolean predicate |
-| Can produce many keys | Exactly true and false groups |
-| Example: department | Example: salary above threshold |
+| Classifier returns a key | Predicate returns boolean |
+| Many possible groups | True and false groups |
+| Example: department | Example: salary >= 100000 |
 
-## 5. reducing
+## 7. toMap and duplicate keys
 
-`reducing` combines values using an associative operation. It is useful as a downstream collector, although specialized collectors such as `counting`, `summingInt`, and `maxBy` are usually clearer.
-
-```java
-int totalSalary = employees.stream()
-    .collect(Collectors.reducing(0, Employee::getSalary, Integer::sum));
-```
-
-The operation should be associative for safe parallel reduction: grouping the operations differently must give the same result. Integer addition is associative mathematically, but integer overflow still applies.
-
-## 6. toMap and duplicate keys
+`toMap` needs a unique key unless you supply a merge function.
 
 ```java
 Map<Long, Employee> byId = employees.stream()
-    .collect(Collectors.toMap(Employee::getId, Function.identity()));
+    .collect(Collectors.toMap(
+        Employee::getId,
+        Function.identity()));
 ```
 
-This throws IllegalStateException if duplicate keys occur. Supply a merge function when duplicates are valid:
+If two employees have the same ID, this throws `IllegalStateException`. Handle duplicates deliberately:
 
 ```java
-Map<String, Integer> totalByDepartment = employees.stream()
+// Keep the employee with the higher salary for each department
+Map<String, Employee> highestPaidByDepartment = employees.stream()
     .collect(Collectors.toMap(
         Employee::getDepartment,
-        Employee::getSalary,
-        Integer::sum));
+        Function.identity(),
+        (left, right) -> left.getSalary() >= right.getSalary()
+            ? left : right));
 ```
 
-## 7. collectingAndThen
+The third argument is the merge function. A fourth argument can supply a map factory, for example `TreeMap::new`, when sorted keys are required.
 
-It applies a finishing transformation after collecting.
+## 8. reducing vs reduce
+
+Stream's `reduce` is a terminal operation. `Collectors.reducing` is a collector, often useful downstream of grouping. Prefer specialized collectors such as `counting`, `summingInt`, and `maxBy` when they express the goal more clearly.
+
+```java
+int totalSalary = employees.stream()
+    .mapToInt(Employee::getSalary)
+    .sum();
+
+int totalUsingReduce = employees.stream()
+    .map(Employee::getSalary)
+    .reduce(0, Integer::sum);
+```
+
+For safe parallel reduction, the combining operation must be associative, and the identity must be a true identity. Associative means changing grouping does not change the result. Integer addition is mathematically associative, but overflow still applies.
+
+## 9. collectingAndThen and unmodifiable results
+
+`collectingAndThen` runs a finishing transformation after the downstream collector completes.
 
 ```java
 Set<String> immutableNames = employees.stream()
@@ -126,44 +175,57 @@ Set<String> immutableNames = employees.stream()
         Collectors.toSet(), Set::copyOf));
 ```
 
-## 8. Real interview scenario
+This makes an unmodifiable copy. Remember that unmodifiable containers do not automatically make mutable elements deeply immutable.
 
-Given employees, return a map containing each department's employee count and average salary. Use groupingBy with a downstream collector or create a small summary record and map each group to it. Explain the trade-off: a single grouping pass is efficient and expresses the business grouping directly.
+## 10. Real interview scenario: department summary
 
-## 9. Common mistakes
+Requirement: return each department's employee count and average salary. A summary record keeps the result clear:
 
-- Using partitioningBy when there are more than two categories.
-- Forgetting to provide a merge function to toMap when duplicate keys are possible.
-- Using reducing where summingInt is clearer.
-- Assuming groupingBy returns a sorted map; its default map type does not promise sorted order.
-- Using a non-associative operation in parallel reductions.
+```java
+record DepartmentSummary(long count, double averageSalary) {}
 
-## 10. Interview questions and answers
+Map<String, DepartmentSummary> summary = employees.stream()
+    .collect(Collectors.groupingBy(
+        Employee::getDepartment,
+        Collectors.collectingAndThen(
+            Collectors.summarizingInt(Employee::getSalary),
+            stats -> new DepartmentSummary(
+                stats.getCount(), stats.getAverage()))));
+```
 
-**Q1. Difference between groupingBy and partitioningBy?**  
-groupingBy groups by a classifier and may create many keys. partitioningBy uses a predicate and creates true/false groups.
+This groups in one stream pass and calculates summary values for each department.
 
-**Q2. How do you count employees per department?**  
-Use groupingBy(Employee::getDepartment, counting()).
+## 11. Common mistakes
 
-**Q3. How do you handle duplicate keys in toMap?**  
-Pass a merge function such as Integer::sum or choose the record to keep.
+1. Forgetting a merge function when duplicate keys are possible in toMap.
+2. Using partitioningBy for more than two categories.
+3. Assuming groupingBy returns a sorted map.
+4. Using reducing when summingInt or counting is simpler.
+5. Using a non-associative operation in a parallel reduction.
+6. Forgetting that a downstream collector works separately inside each group.
+7. Treating unmodifiable results as deeply immutable.
 
-**Q4. What is a downstream collector?**  
-It is the collector applied to the values within each group, such as counting, mapping, summingInt, or collecting to a Set.
+## 12. Interview questions
 
-**Q5. Why does reducing need an associative operation for parallel use?**  
-The stream may split input and combine partial results in a different grouping. Associativity ensures the result is independent of grouping.
+**Q1. What is a downstream collector?** A collector applied to each group produced by groupingBy or partitioningBy.
 
-## 11. Practice problems
+**Q2. How do you count employees per department?** groupingBy(Employee::getDepartment, counting()).
+
+**Q3. How do you handle duplicate keys in toMap?** Supply a merge function that decides which value to keep or how to combine them.
+
+**Q4. groupingBy vs partitioningBy?** groupingBy can create many keys; partitioningBy creates true and false groups based on a predicate.
+
+**Q5. Why must a parallel reduction be associative?** The stream may split input and combine partial results in a different grouping. Associativity makes the result independent of grouping.
+
+**Q6. How do you get count, sum, min, max and average together?** Use summarizingInt, summarizingLong or summarizingDouble.
+
+## 13. Practice problems
 
 1. Count employees by department.
-2. Find average salary by department.
-3. Return unique employee names by department.
+2. Calculate average salary by department.
+3. Get unique employee names by department.
 4. Partition numbers into even and odd.
-5. Convert a list of orders into customerId -> totalAmount, handling repeated customers.
+5. Convert orders into customerId -> totalAmount, handling repeated customers.
 6. Find the highest-paid employee in each department.
-
-## 12. Quick revision
-
-groupingBy = many groups. partitioningBy = true/false. Downstream collectors calculate each group's result. toMap needs a merge function when keys may repeat.
+7. Group employees by department and then city.
+8. Return department count, min salary, max salary and average salary.

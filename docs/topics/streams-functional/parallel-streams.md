@@ -1,90 +1,118 @@
-# Java Parallel Streams
+# Java Parallel Streams: Execution and Trade-offs
 
 ## 1. Sequential vs parallel stream
 
-A sequential stream processes elements in one pipeline on the calling thread in encounter order where the operation requires it. A parallel stream splits work into tasks and processes them concurrently, commonly using the ForkJoin common pool.
+A sequential stream processes its pipeline sequentially. A parallel stream can split the source into partitions and process those partitions concurrently.
 
 ```java
-long count = numbers.parallelStream()
+long evenCount = numbers.parallelStream()
     .filter(n -> n % 2 == 0)
     .count();
 ```
 
-Parallel does not guarantee faster execution.
+Parallel execution does not guarantee a faster result. It adds splitting, scheduling, coordination and combining overhead.
 
-## 2. How parallel processing works
+## 2. How parallel streams work
 
-The source is split using a Spliterator. Tasks process partitions, then combine partial results. Performance depends on source splitting, task size, operation cost, data size and combination overhead.
+1. A source is represented by a Spliterator.
+2. The source is split into smaller pieces when possible.
+3. Tasks process different pieces.
+4. Partial results are combined.
+5. The final result is returned.
 
-## 3. Good use cases
+Parallel streams commonly use the `ForkJoinPool.commonPool()`. A parallel stream does not normally create a dedicated thread pool for every call.
 
-- Large data sets.
-- CPU-intensive, independent operations.
-- Efficiently splittable sources such as arrays or ArrayList.
-- Associative reduction operations with correct identity/combiner behavior.
+## 3. When parallel streams may help
 
-## 4. Poor use cases
+- The data set is large enough to offset overhead.
+- Work per element is CPU-intensive.
+- Each element can be processed independently.
+- The source splits efficiently (arrays and ArrayList are generally good examples).
+- The reduction is associative and combines partial results correctly.
+- Measurements show a real improvement under realistic load.
 
-- Small collections where overhead dominates.
-- Blocking I/O operations.
+## 4. When to avoid them
+
+- Small collections.
+- Blocking database, file, or network calls.
 - Shared mutable state.
-- Operations with required strict ordering.
+- Operations that depend on strict encounter order.
 - Sources that split poorly.
-- Workloads that compete with unrelated tasks in the common pool.
+- When common-pool work competes with other application tasks.
+- When predictable concurrency limits are required.
 
-## 5. Stateless and non-interfering behavior
+For remote API calls, use a client and executor/concurrency limit designed for that work rather than assuming parallel streams provide backpressure or a safe request limit.
+
+## 5. Stateless and non-interfering functions
 
 Stream functions should not modify the source while it is being processed and should avoid shared mutable state.
 
-Bad:
-
+Unsafe:
 ```java
 List<Integer> output = new ArrayList<>();
-numbers.parallelStream().forEach(output::add); // unsafe
+numbers.parallelStream().forEach(output::add); // data race
 ```
 
 Better:
-
 ```java
 List<Integer> output = numbers.parallelStream()
     .filter(n -> n > 10)
     .toList();
 ```
 
-Use built-in collectors/reductions instead of shared mutation.
+Use built-in collectors and reductions instead of mutating shared containers.
 
 ## 6. Ordering
 
-forEach may process in arbitrary order. forEachOrdered preserves encounter order but can reduce parallel benefits. unordered() can relax ordering constraints when valid for the problem.
+- `forEach` does not guarantee encounter order in parallel execution.
+- `forEachOrdered` preserves encounter order but may reduce parallelism.
+- `findFirst` respects encounter order when one exists.
+- `findAny` may return any matching element.
+- `unordered()` can relax order requirements when order is irrelevant.
 
-## 7. Common pool considerations
+## 7. Reduction requirements
 
-Parallel streams commonly use ForkJoinPool.commonPool(). Blocking tasks can reduce its usefulness for other work. Do not assume a parallel stream creates a dedicated thread pool for each call.
+Parallel reduction can combine partial results in different groupings. The operation must be associative, and the identity must be correct.
 
-## 8. Practical scenario
+```java
+int sum = numbers.parallelStream()
+    .reduce(0, Integer::sum);
+```
 
-A batch job calculates independent CPU-heavy scores for hundreds of thousands of records. Parallel streams may help after measuring. Calling a remote API for every item is usually a poor fit; use a controlled asynchronous client and explicit concurrency/backpressure.
+A subtraction reduction is not associative and can produce surprising results when parallelized. Avoid side effects inside reduce/collect functions.
 
-## 9. Common mistakes
+## 8. Performance measurement
 
-- Assuming parallel is always faster.
-- Mutating a shared ArrayList from parallel forEach.
-- Performing blocking network calls in the common pool.
-- Ignoring order requirements.
-- Using non-associative reductions that produce incorrect results.
+Do not compare one run of sequential code with one run of parallel code and draw a conclusion. Warm up the JVM, use representative data, repeat measurements, avoid including unrelated work, and use a benchmark tool such as JMH for serious performance comparisons. Also measure under realistic concurrent application load.
 
-## 10. Interview questions
+## 9. Practical scenario
 
-**Q1. How do parallel streams work?** They split a source into tasks, process partitions concurrently and combine results.
+A batch job calculates an independent CPU-heavy score for a large in-memory collection. A parallel stream may help after measurement. Calling a remote service for every item is usually a poor fit because blocking and uncontrolled concurrency can overload the remote service or common pool.
 
-**Q2. Which pool is commonly used?** ForkJoinPool.commonPool.
+## 10. Common mistakes
 
-**Q3. Why can parallel streams be slower?** Splitting, scheduling and combining overhead can exceed the work saved.
+1. Assuming parallel is always faster.
+2. Mutating an ArrayList from parallel forEach.
+3. Performing blocking network calls in the common pool.
+4. Ignoring encounter-order requirements.
+5. Using non-associative reduction.
+6. Assuming a parallel stream provides a dedicated executor or request backpressure.
+7. Benchmarking without warm-up or representative load.
 
-**Q4. Why is shared mutable state dangerous?** Concurrent writes can race and corrupt results.
+## 11. Interview questions
 
-**Q5. Is forEach order guaranteed?** Not for parallel streams; use forEachOrdered when encounter order is required.
+**Q1. How do parallel streams work?** They split a source into tasks, process partitions concurrently, and combine partial results.
 
-## 11. Practice
+**Q2. Which pool is commonly used?** ForkJoinPool.commonPool().
 
-Compare sequential and parallel processing for a CPU-heavy calculation at different input sizes. Verify results are identical and record timings rather than assuming parallel wins.
+**Q3. Why can parallel streams be slower?** Splitting, scheduling and combining overhead may exceed the work saved.
+
+**Q4. Why is shared mutable state dangerous?** Multiple workers can write at the same time, causing race conditions and incorrect results.
+
+**Q5. Is forEach order guaranteed?** No. Use forEachOrdered if encounter order is required.
+
+**Q6. Are parallel streams good for database or HTTP calls?** Usually not. Blocking I/O and uncontrolled concurrency make them a poor default.
+
+## 12. Practice
+
+Compare sequential and parallel processing for a CPU-heavy calculation at several input sizes. Verify that results match, measure repeatedly, and explain when the parallel version stops being beneficial.

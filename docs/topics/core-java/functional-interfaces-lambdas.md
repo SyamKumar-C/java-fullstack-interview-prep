@@ -1,94 +1,159 @@
 # Functional Interfaces and Lambda Expressions
 
-## 1. Functional interface
+## 1. Functional interface: the SAM rule
 
-A functional interface has exactly one abstract method (SAM). It can still have default, static and Object methods. The `@FunctionalInterface` annotation asks the compiler to verify the rule.
+A functional interface has exactly one **abstract method** (Single Abstract Method / SAM). It may still contain multiple default and static methods. Methods matching public methods of `Object` do not create extra SAM requirements.
 
 ```java
 @FunctionalInterface
-interface PriceRule {
+interface DiscountRule {
     BigDecimal apply(BigDecimal price);
+
+    default String description() {
+        return "Discount rule";
+    }
 }
 ```
 
-## 2. Lambda expression
+`@FunctionalInterface` is optional, but useful: the compiler reports an error if the interface stops being functional.
 
-A lambda provides an implementation of a functional interface.
+A lambda is not a separate type by itself. It is an implementation of a functional interface, and the compiler gets its target type from the assignment, method parameter, or cast.
 
 ```java
-PriceRule discount = price -> price.multiply(new BigDecimal("0.90"));
+DiscountRule tenPercent = price ->
+    price.multiply(new BigDecimal("0.90"));
+
+DiscountRule noDiscount = price -> price;
 ```
 
-The compiler infers the target type from the context. A lambda is not a standalone method declaration; it is used where a functional interface is expected.
+## 2. Built-in functional interfaces
 
-## 3. Common built-in functional interfaces
+All are in `java.util.function`.
 
-| Interface | Method shape | Use |
-|---|---|---|
-| Predicate<T> | T -> boolean | Filter/test |
-| Function<T,R> | T -> R | Transform |
-| Consumer<T> | T -> void | Consume |
-| Supplier<T> | () -> T | Provide value |
-| UnaryOperator<T> | T -> T | Same-type transform |
-| BinaryOperator<T> | (T,T) -> T | Combine two same-type values |
-| BiFunction<T,U,R> | (T,U) -> R | Combine two inputs |
+| Interface | Abstract method shape | Meaning | Example |
+|---|---|---|---|
+| Predicate<T> | T -> boolean | Test a condition | `e -> e.isActive()` |
+| Function<T,R> | T -> R | Transform a value | `Employee::getName` |
+| Consumer<T> | T -> void | Use a value | `System.out::println` |
+| Supplier<T> | () -> T | Provide a value | `UUID::randomUUID` |
+| UnaryOperator<T> | T -> T | Transform same type | `s -> s.trim()` |
+| BinaryOperator<T> | (T,T) -> T | Combine same type | `Integer::sum` |
+| BiFunction<T,U,R> | (T,U) -> R | Two inputs to result | `(a,b) -> a+b` |
+| BiPredicate<T,U> | (T,U) -> boolean | Test two inputs | `String::startsWith` |
+| BiConsumer<T,U> | (T,U) -> void | Consume two inputs | `map::put` |
+
+Primitive specializations such as `IntPredicate`, `IntFunction<R>`, `ToIntFunction<T>`, and `IntBinaryOperator` can avoid boxing and unboxing.
+
+## 3. Lambda syntax and type inference
+
+```java
+// No parameters
+Runnable task = () -> System.out.println("Running");
+
+// One parameter: parentheses are optional
+Predicate<String> nonEmpty = value -> !value.isEmpty();
+
+// Multiple parameters
+Comparator<String> byLength =
+    (left, right) -> Integer.compare(left.length(), right.length());
+
+// Block body must return a value when the SAM method has a return type
+Function<String, Integer> length = value -> {
+    String normalized = value.trim();
+    return normalized.length();
+};
+```
+
+The compiler infers parameter types from the target functional interface. Add explicit types only when they improve clarity or resolve ambiguity.
 
 ## 4. Method references
 
-Method references are shorter forms of lambdas when an existing method matches the required shape.
+A method reference is shorthand for a lambda that calls an existing method.
+
+| Form | Example | Similar lambda |
+|---|---|---|
+| Static method | `Integer::parseInt` | `s -> Integer.parseInt(s)` |
+| Instance method of a particular object | `logger::info` | `s -> logger.info(s)` |
+| Instance method of an arbitrary object of a type | `String::toLowerCase` | `s -> s.toLowerCase()` |
+| Constructor | `ArrayList::new` | `() -> new ArrayList<>()` |
+
+The method reference must match the target method's parameter and return types. It is not automatically better than a lambda; choose the clearer form.
+
+## 5. Variable capture and `this`
+
+A lambda can read local variables only when they are final or effectively final.
 
 ```java
-names.forEach(System.out::println);
-List<String> upper = names.stream()
-    .map(String::toUpperCase)
-    .toList();
+int minimum = 100; // effectively final
+Predicate<Employee> eligible = e -> e.getSalary() >= minimum;
 ```
 
-Forms include static method, instance method of a particular object, instance method of an arbitrary object of a type, and constructor reference.
+This does not compile if `minimum` is later reassigned. A captured object reference can still point to a mutable object; that does not make mutation thread-safe.
 
-## 5. Variable capture
+Inside a lambda, `this` refers to the enclosing object. Inside an anonymous inner class, `this` refers to that anonymous class instance. This difference is a common interview question.
 
-A lambda can capture local variables only when they are final or effectively final. The lambda may access an object reference, but mutating the referenced object has separate thread-safety implications.
-
-## 6. Composition
-
-Predicates support and/or/negate; Functions support andThen/compose; Consumers support andThen.
+## 6. Composing functions
 
 ```java
 Predicate<Employee> active = Employee::isActive;
-Predicate<Employee> highPaid = e -> e.getSalary() > 100_000;
-Predicate<Employee> eligible = active.and(highPaid);
+Predicate<Employee> wellPaid = e -> e.getSalary() >= 100_000;
+Predicate<Employee> eligible = active.and(wellPaid);
+
+Function<String, String> trim = String::trim;
+Function<String, String> upper = String::toUpperCase;
+Function<String, String> normalize = trim.andThen(upper);
+
+Function<Integer, Integer> addOne = n -> n + 1;
+Function<Integer, Integer> doubleIt = n -> n * 2;
+Function<Integer, Integer> doubleThenAdd = addOne.compose(doubleIt);
+// doubleIt runs first, then addOne
 ```
 
-## 7. Practical scenarios
+- Predicate: `and`, `or`, `negate`.
+- Function: `andThen` runs this function first; `compose` runs the supplied function first.
+- Consumer: `andThen` runs consumers in sequence.
 
-- Predicate: filter active employees.
-- Function: map Employee to EmployeeDto.
-- Consumer: log each result.
-- Supplier: lazily create a fallback.
-- Comparator: define custom sorting.
-- Method reference: simplify a direct method call.
+Predicate composition uses short-circuit evaluation: `A.and(B)` does not evaluate B when A is false.
+
+## 7. Where these appear in real Java code
+
+- Streams: `filter(Predicate)`, `map(Function)`, `forEach(Consumer)`.
+- Sorting: `Comparator<T>`.
+- Lazy fallback: `Optional.orElseGet(Supplier)`.
+- Async work: `CompletableFuture.supplyAsync(Supplier)`.
+- Spring: callbacks, event listeners, and custom strategies can use functional interfaces.
+
+Prefer a named method or class when the logic is long, reused, or needs a meaningful name. Lambdas should make code easier to read, not compress complex business logic into one line.
 
 ## 8. Common mistakes
 
-- Thinking a functional interface can have only one method total; it can have default/static methods.
-- Using a lambda when a named method improves readability.
-- Mutating captured local variables.
-- Using side effects inside parallel stream lambdas without coordination.
-- Forgetting that a lambda's target type comes from context.
+1. Saying a functional interface can contain only one method total. The rule is one abstract method.
+2. Trying to reassign a captured local variable.
+3. Assuming a lambda creates a new scope for `this`.
+4. Using raw or overly generic functional interfaces when a primitive specialization is clearer.
+5. Writing side effects into stream predicates or mapping functions.
+6. Assuming a method reference can be used even when its signature does not match the target SAM.
 
 ## 9. Interview questions
 
-**Q1. What is a functional interface?** An interface with one abstract method, suitable as a lambda target.
+**Q1. What is a functional interface?** An interface with one abstract method; it is the target type for a lambda or method reference.
 
-**Q2. Can it have default methods?** Yes. The single-abstract-method rule counts abstract methods.
+**Q2. Can it have default and static methods?** Yes. They are not additional abstract methods.
 
-**Q3. Predicate vs Function?** Predicate returns boolean; Function transforms T into R.
+**Q3. Predicate vs Function?** Predicate tests and returns boolean; Function transforms T into R.
 
-**Q4. What is effectively final?** A local variable whose value is not changed after initialization.
+**Q4. Consumer vs Supplier?** Consumer accepts a value and returns nothing; Supplier accepts no input and provides a value.
 
-**Q5. Lambda vs anonymous class?** Lambdas target functional interfaces and have different this/scoping semantics; anonymous classes create a distinct class instance with their own this.
+**Q5. What does effectively final mean?** A local variable is assigned once and is not reassigned after initialization.
+
+**Q6. Lambda vs anonymous class?** A lambda implements a functional interface and uses the enclosing `this`; an anonymous class creates its own class instance and its own `this`.
+
+**Q7. What is the difference between `compose` and `andThen`?** For Function, `compose` applies the supplied function first; `andThen` applies this function first.
 
 ## 10. Practice
 
-Create a list of employees and use Predicate, Function and Comparator to filter active employees, map them to names and sort them by salary.
+1. Define a functional interface for calculating tax and implement two tax rules with lambdas.
+2. Filter active employees whose salary exceeds a threshold using Predicate composition.
+3. Convert a list of Employee objects into employee-name strings using Function.
+4. Sort employees by department and then salary using Comparator chaining.
+5. Explain why changing a local variable captured by a lambda is not allowed.
